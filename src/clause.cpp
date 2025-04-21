@@ -352,6 +352,45 @@ void Internal::assign_original_unit (uint64_t id, int lit) {
   learn_empty_clause ();
 }
 
+
+
+// Assign original unit but when the unit is a gbc
+// so we need to add a proof step justifying it
+void Internal::assign_original_unit_gbc (uint64_t id, int lit, vector<int> autarky) {
+  assert (!level || opts.chrono);
+  assert (!unsat);
+  const int idx = vidx (lit);
+  assert (!vals[idx]);
+  assert (!flags (idx).eliminated ());
+  Var &v = var (idx);
+  v.level = 0;
+  v.trail = (int) trail.size ();
+  v.reason = 0;
+  const signed char tmp = sign (lit);
+  set_val (idx, tmp);
+  trail.push_back (lit);
+  num_assigned++;
+  const unsigned uidx = vlit (lit);
+  if (lrat || frat)
+    unit_clauses (uidx) = id;
+  LOG ("original unit assign %d", lit);
+  assert (num_assigned == trail.size () || level);
+  // adding a proof logging step
+  // using a empty vector since the one element in the clause is lit
+  std::vector<int> empty_clause(0); // Also creates an empty vector
+  if (proof) {
+    proof->add_derived_globally_blocked_clause (lit, empty_clause, autarky, lrat_chain);
+  }
+  mark_fixed (lit);
+  if (level)
+    return;
+  if (propagate ())
+    return;
+  assert (conflict);
+  LOG ("propagation of original unit results in conflict");
+  learn_empty_clause ();
+}
+
 // New clause added through the API, e.g., while parsing a DIMACS file.
 // Also used by external_propagate in various different modes.
 // clause, original, lrat_chain and external->eclause are set.
@@ -531,6 +570,26 @@ Clause *Internal::new_learned_redundant_clause (int glue) {
   if (proof) {
     proof->add_derived_clause (res, lrat_chain);
   }
+  assert (watching ());
+  watch_clause (res);
+  return res;
+}
+
+// same as new_learned_irredundant_global_clause, but irredundant and with different proof logging
+Clause *Internal::new_learned_weak_irredundant_global_clause (int lit, vector<int> negated_conditional, vector<int> autarky,int glue) {
+  assert (clause.size () > 1);
+#ifndef NDEBUG
+  for (size_t i = 2; i < clause.size (); i++)
+    assert (var (clause[0]).level >= var (clause[i]).level),
+        assert (var (clause[1]).level >= var (clause[i]).level);
+#endif
+  external->check_learned_clause ();
+  Clause *res = new_clause (false, glue);
+
+  if (proof) {
+    proof->add_derived_globally_blocked_clause (lit, negated_conditional, autarky, lrat_chain);
+  }
+
   assert (watching ());
   watch_clause (res);
   return res;

@@ -1,4 +1,5 @@
 #include "internal.hpp"
+#include <list>
 
 namespace CaDiCaL {
 
@@ -312,6 +313,23 @@ void Proof::add_derived_clause (uint64_t id, bool r, const vector<int> &c,
     proof_chain.push_back (cid);
   clause_id = id;
   redundant = r;
+  add_derived_clause ();
+}
+
+void Proof::add_derived_globally_blocked_clause (int lit, vector<int> negated_conditional, vector<int> autarky, const vector<uint64_t> &chain) {
+  LOG ("PROOF adding to proof globally blocked derived");
+  assert (clause.empty ());
+  assert (proof_chain.empty ());
+
+  add_literal(lit);
+  add_literals(negated_conditional);
+  add_literal(lit);
+  add_literals(autarky); // autarky minus lit
+  for (const auto &cid : chain)
+    proof_chain.push_back (cid);
+  // this id stuff is not right
+  clause_id = ++clause_id;
+  redundant = false;
   add_derived_clause ();
 }
 

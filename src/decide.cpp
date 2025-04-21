@@ -96,13 +96,18 @@ void Internal::new_trail_level (int lit) {
 /*------------------------------------------------------------------------*/
 
 bool Internal::satisfied () {
-  if ((size_t) level < assumptions.size () + (!!constraint.size ()))
+  if ((size_t) level < assumptions.size () + (!!constraint.size ())) {
+    printf("failed on first!\n");
     return false;
-  if (num_assigned < (size_t) max_var)
+  } if (num_assigned < (size_t) max_var) {
+    printf("failed on second!\n");
     return false;
+  }
   assert (num_assigned == (size_t) max_var);
-  if (propagated < trail.size ())
+  if (propagated < trail.size ()) {
+    printf("failed on third!\n");
     return false;
+  }
   size_t assigned = num_assigned;
   return (assigned == (size_t) max_var);
 }

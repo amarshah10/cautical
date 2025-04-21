@@ -1,4 +1,7 @@
 #include "internal.hpp"
+#include <fstream>  // For file handling
+#include <ctime>
+
 
 namespace CaDiCaL {
 
@@ -686,6 +689,194 @@ int Internal::preprocess () {
   return 0;
 }
 
+// gets all of the touched literals based on the current assignment
+// this heuristic is described in PreLearn paper
+vector<int> Internal::get_touched_literals () {
+  if (!opts.globaltouch){
+    std::vector<int> literals;
+    for (int i = 1; i <= max_var; ++i) {
+        literals.push_back(i);
+    }
+    return literals;
+  }
+  vector<int> touched_literals;
+  for (auto &c : clauses) {
+    bool clause_touched = false;
+    bool clause_satisfied = false;
+    vector<int> variables_to_consider;
+    for (auto l : *c) {
+      if (val (l) > 0) {
+        clause_satisfied = true;
+        break;
+      } else if (val (l) < 0) {
+        clause_touched = true;
+      } else if (!getbit (l, 1) && !(Internal::flags (l).status == Flags::FIXED)) {
+          variables_to_consider.push_back(l);
+      }
+    }
+    if (clause_touched && !clause_satisfied) {
+      for (auto l : variables_to_consider) {
+          touched_literals.push_back(l);
+          setbit (l, 1);
+      }
+    }
+  }
+  for (auto l : touched_literals) {
+    unsetbit (l, 1);
+  }
+
+  return touched_literals;
+}
+
+
+// amar : created an option to learn globally blocked clauses in a preprocessing step
+int Internal::global_preprocess () {
+  std::ofstream outFile;
+  char* filename = getenv("CADICAL_FILENAME");
+  outFile.open (filename);
+  if (!outFile) {
+      error ("Error: File could not be created.");
+  }
+
+  std::ofstream outFile_pr;
+  std::string filename_pr = filename;  // Implicit conversion
+  filename_pr += "_pr";
+
+  unsigned int seed = static_cast<unsigned int>(std::time(NULL)); // Store the seed
+
+  LOG("We are using the SEED: ", seed);
+  srand(seed);
+
+  outFile_pr.open (filename_pr);
+  if (!outFile_pr) {
+      error ("Error: File could not be created.");
+  }
+
+  double original_time = time ();
+
+  for (int count = 1; count <= Internal::max_var; count++) {
+
+    if (time () - original_time > opts.globaltimelim)
+      break;
+
+    int i_no_polarity = (rand() % max_var) + 1;
+    int i_polarity = (rand() % 2);
+    int i = (i_polarity ? -1 : 1) * i_no_polarity;
+    // int i = i_no_polarity;
+    // i = 413;
+    if (opts.globalorderi)
+      i = count;
+    backtrack ();
+    // need to have this outside to skip the extra unnecessary loops
+    Flags &f = Internal::flags (i);
+    if (f.status == Flags::FIXED) {
+      // printf("skipping ALL of %d \n", i);
+      continue;
+    }
+    printf("Before on i: %d", i);
+    search_assume_decision (i);
+    if (!propagate ()) {
+      analyze ();
+      if (!propagate ()) {
+        // printf("IN EARLY PROPAGATE: found unsat from %d\n", i);
+        break;
+      }
+      // printf("IN EARLY PROPAGATE: found conflict from %d\n", i);
+      continue;
+    }
+    printf("We are staarting on i: %d", i);
+    vector<int> touched_literals = get_touched_literals ();
+    // printf("For literal %d, we touch: ", i);
+    // print_vector (touched_literals);
+    // for (int j = i + 1; j <= Internal::max_var; j++) {
+    for (auto j : touched_literals) {
+        printf("We are starting on j: %d \n", j);
+        assert (!unsat);
+        vector<int> polarities = opts.globalbothpol ? std::vector<int>{-1, 1} : std::vector<int>{1};
+        for (int polarity : polarities) { 
+          assert (!unsat);
+          int j_polar = polarity * j;
+          // j_polar = 428;
+          // if (i > 15) 
+          //   j_polar = i - 14;
+          // else
+          //   j_polar = i + 14;
+          printf("We are propagating on %d and %d \n", i, j_polar);
+          // printf("We have propagated: %d and trail.size %d \n", propagated, trail.size ());
+
+          // need to have this in the inner loop beause this could be set in the inner loop!!!!
+          Flags &f = Internal::flags (i);
+          if (f.status == Flags::FIXED) {
+            // printf("skipping ALL of %d \n", i);
+            break;
+          }
+          Flags &f2 = Internal::flags (j_polar);
+          if (f2.status == Flags::FIXED) {
+            // printf("skipping one interation of %d \n", j_polar);
+            continue;
+          }
+          backtrack ();
+          search_assume_decision (i);
+          if (!propagate ()) {
+            // printf ("We reach a conflict from a single propagation on %d and will analyze\n", i);
+            analyze ();
+            if (!unsat && !propagate ()) {
+              analyze ();
+              // printf ("We should have reached a contradiction! \n");
+              break;
+              // if (!propagate ()) {
+              //   printf("Made it inside the unecessary propagation! \n");
+              // }
+            }
+          } else {
+            if (val (j_polar) != 0) {
+              // printf("propagating %d give %d \n", i, j_polar);
+              continue;
+            }
+            search_assume_decision (j_polar);
+            if (!propagate ()) {
+              analyze ();
+              if (!unsat && !propagate ()) {
+                analyze ();
+                if (!unsat && !propagate ()) {
+                  analyze ();
+                }
+              }
+            } else {
+              bool added_a_clause = least_conditional_part(outFile, outFile_pr);
+              backtrack ();
+              printf("We have just finished adding a clause step!\n");
+            }
+          }
+        if (unsat) return 20;
+      }
+      if (unsat) return 20;
+    }
+    printf("out of loop!\n");
+    if (unsat) return 20;
+    backtrack ();
+    f = Internal::flags (i);
+    if (f.status == Flags::FIXED) {
+      printf("skipping ALL of %d \n", i);
+      continue;
+    }
+    search_assume_decision (i);
+    if (!propagate ()) {
+      printf("6.Right before analyze!\n");
+      analyze ();
+      backtrack ();
+      continue;
+    }
+    backtrack ();
+    assert (Internal::flags (i).status != Flags::FIXED);
+    search_assume_decision (-i);
+    if (!propagate ())
+      analyze ();
+    if (unsat) return 20;
+  }
+  return 0;
+}
+
 /*------------------------------------------------------------------------*/
 
 int Internal::try_to_satisfy_formula_by_saved_phases () {
@@ -856,6 +1047,9 @@ int Internal::solve (bool preprocess_only) {
   }
   if (!res && !level)
     res = preprocess ();
+  if (!res && opts.globalpreprocess)
+    res = global_preprocess ();
+    backtrack ();
   if (!preprocess_only) {
     if (!res && !level)
       res = local_search ();

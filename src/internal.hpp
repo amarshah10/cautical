@@ -1244,6 +1244,25 @@ struct Internal {
 
   bool terminating_asked ();
 
+  // amar
+  Clause *new_learned_weak_irredundant_global_clause (int lit, vector<int> negated_conditional, vector<int> autarky_minus_lit, int glue);  // added by amar
+  int global_preprocess ();
+  vector<int> get_touched_literals ();
+  bool least_conditional_part(std::ofstream& outFile, std::ofstream& outFile_pr);
+  bool compare_alpha_a(int a, int b);
+  void custom_sort_alpha_a(std::vector<int>& alpha_a);
+  void imp_sort_alpha_a (std::vector<int>& alpha_a);
+  void random_sort_alpha_a (std::vector<int>& alpha_a);
+  pair<vector<int>, vector<int>> greedy_sort_alpha_a (std::vector<int> alpha_a, std::vector<int> neg_alpha_c);
+  void bcp_shrink (vector<int> alpha_a, vector<int> alpha_a_useful, vector<int> neg_alpha_c_minus_c0);
+  bool propagate_shrink (vector<int> alpha_a, vector<int> alpha_a_useful, vector<int> neg_alpha_c_minus_c0);
+  void add_clause(vector<int> new_clause, int lit, vector<int> negated_conditional, vector<int> autarky, std::ofstream& outFile, std::ofstream& outFile_pr);
+  void record_clause(int lit, vector<int> negated_conditional, vector<int> autarky, std::ofstream& outFile, std::ofstream& outFile_pr);
+  void record_clause(vector<int> new_clause, int lit, vector<int> negated_conditional, vector<int> autarky);
+  void sort_vec_by_decision_level(vector<int>* v);
+  bool check_if_clause_trivial(vector<int> c);
+  void assign_original_unit_gbc (uint64_t, int, vector<int>);
+
 #ifndef QUIET
   // Built in profiling in 'profile.cpp' (see also 'profile.hpp').
   //

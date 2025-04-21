@@ -1,0 +1,614 @@
+#include "internal.hpp"
+#include <map>
+#include <fstream>  // For file handling
+#include <cstdlib>
+#include <ctime>
+#include <csignal>
+#include <algorithm>
+#include <random>
+#include <unordered_set>
+#include <set>
+#include <utility>  // For std::pair
+#include <algorithm>  // for std::min
+using namespace std;
+
+namespace CaDiCaL {
+
+void print_vector (vector<int> c) {
+    for(int i = 0; i < c.size(); i++){
+            printf("%d ", c[i]);
+        }
+    printf("\n");
+}
+
+void printSet(const unordered_set<int> uset) {
+    printf("  { ");
+        for (const auto& elem : uset) {
+            printf("%d ", elem);
+        }
+        printf("}\n");
+}
+
+void printVectorOfSets(const vector<unordered_set<int>>& vec) {
+    printf("[\n");
+    for (const auto& uset : vec) {
+        printSet(uset);
+    }
+    printf("]\n");
+}
+
+// returns true if not a < b
+// this is only true if there is some assuming (a) can give you 
+bool Internal::compare_alpha_a(int a, int b) {
+    backtrack ();
+    search_assume_decision(a);
+
+    if (!propagate()) {
+        // we should never get here since we are propagating only from alpha_a
+        assert (false);
+    } else if (val(b) > 0) {
+        LOG("We get that %d < %d\n", a, b);
+        return true;  // a should come before b
+    }
+    return false;  // Otherwise, maintain original order
+}
+
+// custom sort function as I cannot use std::sort to sort alpha_a since compare_alpha_a is non-statics
+// basically does a naive swapping thing
+// todo: make this more efficient and do a topological sort
+void Internal::imp_sort_alpha_a(std::vector<int>& alpha_a) {
+    for (size_t i = 0; i < alpha_a.size(); ++i) {
+        for  (size_t j = i + 1; j < alpha_a.size(); ++j) {
+            if (compare_alpha_a(alpha_a[j] , alpha_a[i])) {
+                LOG("comparing %d and %d\n", alpha_a[i], alpha_a[j]);
+                int temp = alpha_a[j];
+                alpha_a[j] = alpha_a[i];
+                alpha_a[i] = temp;
+            }
+        }
+    }
+}
+
+void Internal::random_sort_alpha_a(std::vector<int>& alpha_a) {
+    std::random_device rd;  // Non-deterministic random number source
+    std::default_random_engine rng(rd());  // Seeding the engine
+
+    std::shuffle(alpha_a.begin(), alpha_a.end(), rng);
+}
+
+void Internal::custom_sort_alpha_a(std::vector<int>& alpha_a) {
+    if (opts.globalalphaasort) {
+        imp_sort_alpha_a(alpha_a);
+    } else if (opts.globalalphaarandom) {
+        random_sort_alpha_a(alpha_a);
+    }
+}
+
+// Function to find the smallest number of subsets that maximize union
+pair<vector<int>, vector<int>> greedySetCover(vector<unordered_set<int>>& subsets, vector<int> total_elements) {
+
+    unordered_set<int> covered;
+    unordered_set<int> uncovered(total_elements.begin(), total_elements.end());;
+    int num_elements = 0;
+    vector<int> chosen_subsets;
+    
+    // Greedy selection process
+    while (covered.size() < total_elements.size ()) {
+        int best_idx = -1;
+        size_t max_new_elements = 0;
+        
+        // Find the subset that adds the most new elements
+        for (size_t i = 0; i < subsets.size(); i++) {
+            size_t new_elements = 0;
+            for (int elem : subsets[i]) {
+                if (covered.find(elem) == covered.end()) {
+                    new_elements++;
+                }
+            }
+            
+            if (new_elements > max_new_elements) {
+                max_new_elements = new_elements;
+                best_idx = i;
+            }
+        }
+
+        // No more useful subsets found
+        if (best_idx == -1) break;
+
+        // Add the chosen subset to the solution
+        chosen_subsets.push_back(best_idx);
+        covered.insert(subsets[best_idx].begin(), subsets[best_idx].end());
+        for (const auto& elem : subsets[best_idx]) {
+            uncovered.erase(elem);
+        }
+    }
+
+    vector<int> uncovered_vector(uncovered.begin (), uncovered.end ());
+    return std::make_pair(chosen_subsets, uncovered_vector);
+}
+// picking alpha_a_useful based on greedy set cover
+
+
+
+    
+pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> alpha_a, std::vector<int> neg_alpha_c) {
+    vector<int> alpha_a_useful;
+    vector<unordered_set<int>> alpha_a_propagated;
+
+    printf("doing a greedy_sort_alpha_a with: \n");
+    printf("alpha_a: ");
+    print_vector(alpha_a);
+    printf("neg_alpha_c");
+    print_vector(neg_alpha_c);
+
+    for (int i=0; i < alpha_a.size(); i++){
+            Flags &f = flags (alpha_a[i]);
+
+            if (f.status == Flags::FIXED) {
+                continue;
+            }   
+            backtrack (0);
+            search_assume_decision(-alpha_a[i]);
+            if (!propagate ()) {
+                analyze ();
+                if (unsat)
+                    break;
+                if (!propagate ()) {
+                    analyze ();
+                    break;
+                }
+                continue;
+            } 
+            unordered_set<int> propagated;
+            for (int j=0; j < neg_alpha_c.size(); j ++) {
+                int v = val (neg_alpha_c[j]);
+                if (v < 0) {
+                    assert (j < neg_alpha_c.size());
+                    propagated.insert(neg_alpha_c[j]);
+                }
+            }
+            if (propagated.size () > 0) {
+                alpha_a_useful.push_back(alpha_a[i]);
+                alpha_a_propagated.push_back(propagated);
+            }
+        }
+
+    backtrack (0);
+
+    printf("We are calling greedySsetCover!\n ");
+    printf("Subsets:");
+    printVectorOfSets(alpha_a_propagated);
+    printf("alpha_a_useful: ");
+    print_vector(alpha_a_useful);
+    printf("neg_alpha_c:");
+    print_vector (neg_alpha_c);
+
+    auto [chosen_indices, neg_alpha_c_without_c0] = greedySetCover(alpha_a_propagated, neg_alpha_c);
+
+    vector<int> alpha_a_useful_final;
+
+    // Add elements from alpha_a_useful based on chosen_indices
+    for (int index : chosen_indices) {
+        alpha_a_useful_final.push_back(alpha_a_useful[index]);
+    }
+
+    return std::make_pair(alpha_a_useful_final, neg_alpha_c_without_c0);
+}
+
+void Internal::bcp_shrink(vector<int> alpha_a, vector<int> alpha_a_useful, vector<int> neg_alpha_c_minus_c0) {
+    for (int i=0; i < alpha_a.size(); i++){
+        // todo : I think this shouldn't be necessary because we checked it earlier when creating alpha_a
+        Flags &f = flags (alpha_a[i]);
+
+        if (f.status == Flags::FIXED) {
+            continue;
+        }   
+
+        Watches &ws = watches (alpha_a[i]);
+        const const_watch_iterator end = ws.end ();
+        watch_iterator j = ws.begin ();
+        const_watch_iterator k;
+        bool keep_i = false;
+        for (k = j; k != end; k++) {
+            Watch w = *k;
+            Clause *c = w.clause;
+
+            for (int alpha_c_j=0; alpha_c_j < neg_alpha_c_minus_c0.size();alpha_c_j++) {
+                if (c-> size == 2 && ((c->literals[0] == alpha_a[i] && c->literals[1] == -neg_alpha_c_minus_c0[alpha_c_j]) || (c->literals[1] == alpha_a[i] && c->literals[0] == -neg_alpha_c_minus_c0[alpha_c_j] ))) {
+                    neg_alpha_c_minus_c0.erase(neg_alpha_c_minus_c0.begin() + alpha_c_j);
+                    keep_i = true;
+                    break;
+                }
+            }
+        }
+        if (keep_i) {
+            alpha_a_useful.push_back(alpha_a[i]);
+        }
+    }
+}
+
+bool Internal::propagate_shrink(vector<int> alpha_a, vector<int> alpha_a_useful, vector<int> neg_alpha_c_minus_c0) {
+     for (int i=0; i < alpha_a.size(); i++){
+
+                // todo : I think this shouldn't be necessary because we checked it earlier when creating alpha_a
+                Flags &f = flags (alpha_a[i]);
+                if (f.status == Flags::FIXED) {
+                    continue;
+                }   
+                backtrack (0);
+                search_assume_decision(-alpha_a[i]); 
+
+                // if we learn a singleton conflict, the gbc becomes trivial
+                bool dont_learn_gbc = false;
+
+
+                if (!propagate ()) {
+                    analyze ();
+                    // I am not sure if the conflict checking here is completely correct
+                    if (!propagate ()) {
+                        // printf("At position 3; propagated: %d; trail.size: %d \n", propagated, trail.size ());
+                        printf ("got to a conflict \n");
+                        STOP (global);
+                        return false;
+                    }
+                    continue;
+                } 
+
+                bool keep_i = false;
+
+                LOG(neg_alpha_c_minus_c0, "We have neg_alpha_c_minus_c0:");
+
+                // vector<int> new_neg_alpha_c_minus_c0;
+                // vector<int>::iterator it = neg_alpha_c_minus_c0.begin();
+
+                for (int j=0; j < neg_alpha_c_minus_c0.size();) {
+                    int v = val (neg_alpha_c_minus_c0[j]);
+                    if (v < 0) {
+                        // print_assignment ();
+                        printf("The literal %d in ~alpha_a implies literal %d in alpha_c by unit propagation \n", -alpha_a[i], -neg_alpha_c_minus_c0[j]);
+                        // new_neg_alpha_c_minus_c0.push_back(neg_alpha_c_minus_c0[j]);
+                        assert (j < neg_alpha_c_minus_c0.size());
+                        neg_alpha_c_minus_c0.erase(neg_alpha_c_minus_c0.begin() + j);
+                        keep_i = true;
+                    } else {
+                        j++;
+                    }
+                }
+                if (keep_i)
+                    alpha_a_useful.push_back(alpha_a[i]);
+            }
+        // was remembering literals without this backtrack
+        backtrack (0);
+}
+
+// necessary procedure before adding a clause
+void Internal::sort_vec_by_decision_level(vector<int>* v) {
+    std::sort(v->begin (), v->end (), 
+                [this](int x, int y) {
+                    return (var (x).level > var (y).level);
+                });
+}
+
+void Internal::record_clause (int lit, vector<int> negated_conditional, vector<int> autarky, std::ofstream& outFile, std::ofstream& outFile_pr) {
+    outFile << lit << " ";
+    outFile_pr << lit << " ";
+    for (int val : negated_conditional) {
+        outFile << val << " ";
+        outFile_pr << val << " ";
+    }
+    outFile_pr << lit << " ";
+
+    for (int val : autarky) {
+        outFile_pr << val << " ";
+    }
+    outFile << "\n";
+    // outFile.flush();
+    outFile_pr << "\n";
+    // outFile_pr.flush();
+}
+
+void Internal::add_clause(vector<int> new_clause, int lit, vector<int> negated_conditional, vector<int> autarky, std::ofstream& outFile, std::ofstream& outFile_pr) {
+
+    printf("We are adding the clause: ");
+    print_vector(new_clause);
+    // removing the lit from autarky and negated conditional
+    autarky.erase(std::remove(autarky.begin(), autarky.end(), lit), autarky.end());
+    negated_conditional.erase(std::remove(negated_conditional.begin(), negated_conditional.end(), lit), negated_conditional.end());
+
+    clause = new_clause;
+    sort_vec_by_decision_level(&clause);
+
+    if (opts.globallearn) {
+        if (clause.size () > 1) {
+            Clause* c = new_learned_weak_irredundant_global_clause (lit, negated_conditional, autarky, 1);
+        } else {
+            assign_original_unit_gbc (++clause_id, clause[0], autarky);
+            printf("we are adding the globally blocked unit: %d\n", clause[0]);
+        }
+    }
+    if (opts.globalrecord)
+        record_clause(lit, negated_conditional, autarky, outFile, outFile_pr);
+
+    clause.clear ();
+}
+
+bool Internal::check_if_clause_trivial(vector<int> c) {
+    START (trivial);
+    if (c.size() > opts.globalmaxlen) {
+        STOP (trivial);
+        return true;
+    }
+
+    backtrack ();
+    bool is_trivial = false;
+    for (auto lit : c) {
+        if (val (lit) > 0) {
+            is_trivial = true;
+            break;
+        } else if (val (lit) < 0) {
+            continue;
+        }
+        search_assume_decision (-1 * lit);
+        
+        if (!propagate ()) {
+            printf("found a conflict on %d!\n", lit);
+            analyze (); // todo: there is an issue where if analyze finds a conflict right now we learn it :(
+            while (!unsat && !propagate ()) {
+                printf("found another conflict!\n");
+                analyze ();
+            }
+            printf("finished with conflicts!\n");
+            is_trivial = true;
+            break;
+        }
+    }
+    backtrack ();
+    STOP (trivial);
+    return is_trivial;
+}
+
+bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& outFile_pr) {
+
+    START (global);
+
+    vector<int> neg_alpha_c;
+    std::map<int, int> times_touched;
+    
+
+    for (const auto &c: clauses) {        
+        // skip learned (redundant) clauses (but only when we are not in proof checking mode)
+        // todo: need to
+        if (c->redundant && !proof) continue;
+
+
+        // current assignment satisfies current clause
+        bool satisfies_clause = false;
+        // assignment mentioned in clause
+        vector<int> alpha_touches;
+
+        if (c->garbage) {
+            continue;
+        }
+        bool skip_clause = false;
+        for (const_literal_iterator l = c->begin (); l != c->end (); l++) {
+            const int lit = *l;
+            const signed char lit_val = val (lit);
+            Flags &f = flags (lit);
+            if (lit_val > 0 && f.status == Flags::FIXED) {
+                skip_clause = true;
+                break;
+            }
+        } 
+        if (skip_clause) {
+            continue;
+        }
+
+        for (auto lit : *c) {
+            const signed char lit_val = val (lit);
+            if (lit_val > 0) { // positive assignment
+                satisfies_clause = true;
+                // update times_touched with touch
+                if (times_touched.find(lit) == times_touched.end()) { // lit not in dict
+                    times_touched.insert(std::pair<int, int>(lit, 1));
+                } else { // lit in dict
+                    times_touched[lit] = times_touched[lit] + 1;
+                }
+            } else if (lit_val < 0) { // negative assignment
+                // skip the fixed negative literals
+                Flags &f = flags (lit);
+                if (f.status == Flags::FIXED) {
+                    continue;
+                }
+                if (!getbit(lit, 0)) {
+                    alpha_touches.push_back(lit);
+                }
+            }
+        }
+
+        if (!satisfies_clause) {
+            // add alpha_touches to neg_alpha_c
+            neg_alpha_c.insert(neg_alpha_c.end(), alpha_touches.begin(), alpha_touches.end());
+            // set "added to neg_alpha_c" bit
+            for (int i=0; i < alpha_touches.size(); i++){
+                // printf("adding to neg_alpha_c: %d \n", alpha_touches[i]);
+                setbit(alpha_touches[i], 0);
+            }
+        }
+    }
+
+    // keep track of this for proof
+    vector<int> alpha_a;
+
+    vector<vector<int>> clauses_to_add;
+
+    // Marijn suggested the heuristic that when alpha_a is entirely decision literals,
+    // we need to not add a clause
+    // todo: I'm not sure why this is?
+
+    for (auto const& [key, val] : times_touched) {
+        if (!getbit(key, 0)) {
+            if (!is_decision (key)) {
+                vector<int> new_clause = neg_alpha_c;
+                new_clause.push_back(key);
+                clauses_to_add.push_back(new_clause);
+            }
+            // todo : maybe thsi shoudl be the 
+            int key_val = Internal::val (key);
+            alpha_a.push_back(key);
+        }
+    }
+
+    // have to unset all of the bits
+    for(int i=0; i < neg_alpha_c.size(); i++){
+        unsetbit(neg_alpha_c[i], 0);
+    }
+
+
+    vector <int>neg_alpha_c_minus_c0(neg_alpha_c);
+    vector <int> alpha_a_useful;
+
+
+    // sorting alpha_a by implication, randomly or not at all depending on flags
+    custom_sort_alpha_a(alpha_a);
+
+    if (opts.globalalphaagreedy) {
+        std::tie(alpha_a_useful, neg_alpha_c_minus_c0) = greedy_sort_alpha_a(alpha_a, neg_alpha_c); // issue with variable shadowing
+    } else {
+    
+        // try to shrink clauses using binary clause propagation, instead of a more general propagation
+        if (opts.globalbcp) {
+            bcp_shrink( alpha_a, alpha_a_useful, neg_alpha_c_minus_c0);
+        // otherwise try to shrink clauses using internal propagator
+        } else {
+           bool end_early = propagate_shrink(alpha_a, alpha_a_useful, neg_alpha_c_minus_c0);
+           if (!end_early) {
+             return false;
+           }
+        }
+    }
+
+
+    bool adding_a_clause = false;
+    if (alpha_a_useful.empty() || opts.globalnoshrink) {
+        for (int i=0; i < std::min(opts.globalmaxclause, static_cast<int>(clauses_to_add.size())); i++){
+            adding_a_clause = true;
+            vector<int> new_clause = clauses_to_add[i];
+            if (!(opts.globalfiltertriv && check_if_clause_trivial (new_clause)))
+                add_clause (new_clause, new_clause.back (), new_clause, alpha_a, outFile, outFile_pr);
+        }
+    } else {
+        adding_a_clause = true;
+        vector<int> new_clause(neg_alpha_c_minus_c0);
+        new_clause.insert(new_clause.end(), alpha_a_useful.begin(), alpha_a_useful.end());
+        if (!(opts.globalfiltertriv && check_if_clause_trivial (new_clause))) {
+            add_clause (new_clause, alpha_a_useful.back(), new_clause, alpha_a, outFile, outFile_pr);
+        }
+    }
+
+
+    
+    // bool adding_a_clause = false;
+    // for (int i=0; i < std::min(opts.globalmaxclause, static_cast<int>(clauses_to_add.size())); i++){
+    //     // only add a clause of size at least 2
+    //     adding_a_clause = true;
+
+    //     if (alpha_a_useful.empty() || opts.globalnoshrink) {
+
+    //         vector<int> new_clause = clauses_to_add[i];
+
+    //         if (new_clause.size() > 1) {
+    //             int last_element = new_clause.back ();
+    //             sort_vec_by_decision_level(&new_clause);
+    //             bool is_clause_trivial = opts.globalfiltertriv && check_if_clause_trivial (new_clause);
+    //             clause = new_clause;
+    //             // todo : got rid of non-shrunk clause learning for rn
+    //             printf("With is_clause-triv: %d, we are adding the globally blocked clause (non-shrunk):", is_clause_trivial);
+    //             print_vector(clause);
+    //             printf("\n");
+    //             vector<int> neg_alpha_c_a(neg_alpha_c);
+    //             neg_alpha_c_a.push_back(last_element);
+
+    //             if (opts.globalrecord && !is_clause_trivial) {
+    //                 outFile_pr << last_element << " ";
+    //                 outFile_pr <<  " ";
+    //                 for (int val : neg_alpha_c_a) {
+    //                     outFile << val << " ";
+    //                     outFile_pr << val << " ";
+    //                 }
+    //                 for (int val : alpha_a) {
+    //                     outFile_pr << val << " ";
+    //                 }
+    //                 outFile << "\n";
+    //                 outFile.flush();
+    //                 outFile_pr << "\n";
+    //                 outFile_pr.flush();
+    //             }
+
+    //             if (opts.globallearn) {
+    //                 printf("Learning the original clause (no shrink)! \n ");
+    //                 if (!is_clause_trivial)   
+    //                     Clause* c = new_learned_weak_irredundant_global_clause (last_element, neg_alpha_c_a, alpha_a, 1);
+    //             }
+
+          
+
+    //             clause.clear ();
+    //         }
+    //     } else { 
+    //         vector<int> neg_alpha_c_minus_c0_alpha_a(neg_alpha_c_minus_c0);
+    //         neg_alpha_c_minus_c0_alpha_a.insert(neg_alpha_c_minus_c0_alpha_a.end(), alpha_a_useful.begin(), alpha_a_useful.end());
+    //         printf("checking if this clauses is trivial");
+    //         bool is_clause_trivial = opts.globalfiltertriv && check_if_clause_trivial (neg_alpha_c_minus_c0_alpha_a);
+    //         clause = neg_alpha_c_minus_c0_alpha_a;
+    //         sort_vec_by_decision_level(&clause);
+    //         // printf("We are adding the reduced globally blocked clause:");
+    //         // print_vector(clause);
+    //         if (opts.globallearn) {
+    //             if (clause.size () > 1) {
+    //                 printf("actually learning the clause!");
+    //                 // todo remove this only taking binary clause
+    //                 if (!is_clause_trivial)
+    //                     Clause* c = new_learned_weak_irredundant_global_clause (alpha_a_useful.back(), neg_alpha_c_minus_c0_alpha_a, alpha_a, 1);
+    //                 // Clause* c = new_learned_redundant_clause (1);
+    //                 printf("With is_clause_trivial %d, we are adding the globally blocked clause: ", is_clause_trivial);
+    //                 print_vector(alpha_a_useful);
+    //                 printf(" ");
+    //                 print_vector(neg_alpha_c_minus_c0_alpha_a);
+    //                 printf("\n");
+    //             } else {
+    //                 // todo : currently, I can only assign a unit at level 0
+    //                 if (!opts.globalbcp) {
+    //                     assign_original_unit_gbc (++clause_id, clause[0], alpha_a);
+    //                     printf("we are adding the globally blocked unit: %d\n", clause[0]);
+    //                 }
+    //             }
+    //         }
+    //         // printf("made it past the learning! \n");
+    //         if (opts.globalrecord && !is_clause_trivial) {
+    //             // printf("actually recording the clause!");
+    //                 outFile_pr << alpha_a_useful.back() << " ";
+    //                 for (int val : neg_alpha_c_minus_c0_alpha_a) {
+    //                     outFile << val << " ";
+    //                     outFile_pr << val << " ";
+    //                 }
+    //                 for (int val : alpha_a) {
+    //                     outFile_pr << val << " ";
+    //                 }
+    //                 outFile << "\n";
+    //                 outFile.flush();
+    //                 outFile_pr << "\n";
+    //                 outFile_pr.flush();
+    //             }
+    //         // printf("made it past the recording! \n");
+
+    //         clause.clear ();
+    //     }
+
+        // note we do this inside the for loop, since we only want to do add one clause
+        // printf("exited globally blocked stuff \n");
+        STOP (global);
+        return adding_a_clause;
+    // }
+    // return false;
+  }
+}
