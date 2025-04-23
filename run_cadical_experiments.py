@@ -2,7 +2,7 @@
 """
 run_cadical_experiments.py
 Run CaDiCaL on every file in a target folder under every combination
-of four flag‑families (plus an optional “globalorderi=true”) and
+of four flag‑families (plus an optional "globalorderi=true") and
 summarise the results.
 
 Usage
@@ -55,6 +55,11 @@ TOUCH_OPTS = [
     "--globaltouch=false",
 ]
 
+POLARITY_OPTS = [
+    "--globalbothpol=true",
+    "--globalbothpol=false",
+]
+
 BASE_CMD = (
     "build/cadical "
     "--report=true --chrono=false "
@@ -65,7 +70,7 @@ BASE_CMD = (
     "--globalrecord=false "
 )
 
-TIMEOUT_SEC = 300
+TIMEOUT_SEC = 10
 REPETITIONS = 10           # per option set w/o globalorderi
 ORDERI_REPETITIONS = 1     # per option set with globalorderi=true
 ###############################################################################
@@ -77,20 +82,40 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("--out", default="results.csv",
                         help="CSV file to save all results (append‑mode)")
-    parser.add_argument("--folder", nargs="?", default="satcomp_benchmarks_target")
+    parser.add_argument("--command", default="command set you want to test cadical on")
+    parser.add_argument("--timeout", type=int, default=10,
+                        help="Timeout in seconds for each run (default: 10)")
     return parser.parse_args()
 
 
-def build_option_sets():
-    """Return the 72 combo strings plus the 72 '+orderi' variants."""
+def build_option_sets(command_str: str):
+    """Return combinations based on specified command keys.
+    
+    Args:
+        command_str: Space-separated string of keys from code_dict
+    """
+    code_dict = { 
+        "filter": FILTER_TRIV_OPTS,
+        "time":   PREPROC_TIME_OPTS,
+        "bcp":    BCP_OPTS,
+        "touch":  TOUCH_OPTS,
+        "polarity": POLARITY_OPTS
+    }
+    
+    # Parse and validate commands
+    commands = command_str.split()
+    valid_keys = set(code_dict.keys())
+    invalid_keys = [cmd for cmd in commands if cmd not in valid_keys]
+    if invalid_keys:
+        raise ValueError(f"Invalid command keys: {invalid_keys}. Valid keys are: {list(valid_keys)}")
+    
+    # Get the option lists for requested commands
+    selected_opts = [code_dict[cmd] for cmd in commands]
+    
+    # Generate combinations only for selected options
     combos = list(
         " ".join(parts)
-        for parts in itertools.product(
-            FILTER_TRIV_OPTS,
-            PREPROC_TIME_OPTS,
-            BCP_OPTS,
-            TOUCH_OPTS,
-        )
+        for parts in itertools.product(*selected_opts)
     )
     with_orderi = [f"{c} --globalorderi=true" for c in combos]
     return combos, with_orderi
@@ -164,7 +189,14 @@ def main():
     if not target_dir.is_dir():
         sys.exit(f"folder '{target_dir}' does not exist or is not a directory")
 
-    combos, combos_orderi = build_option_sets()
+    if not args.command:
+        sys.exit("Please specify command keys using --command (e.g., 'filter time bcp')")
+
+    # Set global timeout from command line argument
+    global TIMEOUT_SEC
+    TIMEOUT_SEC = args.timeout
+
+    combos, combos_orderi = build_option_sets(args.command)
 
     # Gather every regular file
     files = sorted(p for p in target_dir.iterdir() if p.is_file())
