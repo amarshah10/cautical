@@ -1248,6 +1248,7 @@ struct Internal {
   Clause *new_learned_weak_irredundant_global_clause (int lit, vector<int> negated_conditional, vector<int> autarky_minus_lit, int glue);  // added by amar
   int global_preprocess ();
   vector<int> get_touched_literals ();
+  vector<int> get_sorted_literals ();
   bool least_conditional_part(std::ofstream& outFile, std::ofstream& outFile_pr);
   bool compare_alpha_a(int a, int b);
   void custom_sort_alpha_a(std::vector<int>& alpha_a);

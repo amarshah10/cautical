@@ -41,8 +41,10 @@ FILTER_TRIV_OPTS = [
 
 PREPROC_TIME_OPTS = [
     "--globaltimelim=5",
+    "--globaltimelim=15",
     "--globaltimelim=30",
     "--globaltimelim=120",
+    "--globaltimelim=300"
 ]
 
 BCP_OPTS = [
@@ -58,6 +60,16 @@ TOUCH_OPTS = [
 POLARITY_OPTS = [
     "--globalbothpol=true",
     "--globalbothpol=false",
+]
+
+ISORT_OPTS = [
+    "--globalisort=true",
+    "--globalisort=false",
+]
+
+NO_NONSHRUNK_OPTS = [
+    "",
+    "--globalmaxclause=0",
 ]
 
 BASE_CMD = (
@@ -99,7 +111,9 @@ def build_option_sets(command_str: str):
         "time":   PREPROC_TIME_OPTS,
         "bcp":    BCP_OPTS,
         "touch":  TOUCH_OPTS,
-        "polarity": POLARITY_OPTS
+        "polarity": POLARITY_OPTS,
+        "isort":  ISORT_OPTS,
+        "nonshrink": NO_NONSHRUNK_OPTS,
     }
     
     # Parse and validate commands

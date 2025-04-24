@@ -729,6 +729,52 @@ vector<int> Internal::get_touched_literals () {
 }
 
 
+// sort the literals by the number of clauses they appear in
+// maybe there is a faster way to do this with occs, but unclear to me how occs gets poulated
+vector<int> Internal::get_sorted_literals () {
+  vector<int> sorted_literals;
+  vector<pair<int, int>> lit_counts; // pair of (literal, count)
+  
+  // Initialize counts for all variables
+  for (int i = 1; i <= max_var; ++i) {
+    if (!active(i)) continue; // Skip inactive variables
+    lit_counts.push_back({i, 0});
+  }
+  
+  // Count occurrences in all clauses
+  for (const auto &c : clauses) {
+    if (c->garbage) continue; // Skip garbage clauses
+    
+    for (const auto &lit : *c) {
+      int var = abs(lit);
+      if (!active(var)) continue; // Skip inactive variables
+      
+      // Find the variable in our counts
+      for (auto &p : lit_counts) {
+        if (p.first == var) {
+          p.second++;
+          break;
+        }
+      }
+    }
+  }
+  
+  // Sort by count in descending order
+  sort(lit_counts.begin(), lit_counts.end(), 
+       [](const pair<int,int>& a, const pair<int,int>& b) {
+         return a.second > b.second;
+       });
+  // Extract sorted literals
+  printf("we have the sorted literals");
+  for (const auto& p : lit_counts) {
+    printf("%d (%d) ", p.first, p.second);
+    sorted_literals.push_back(p.first);
+  }
+  printf("\n");
+  return sorted_literals;
+}
+
+
 // amar : created an option to learn globally blocked clauses in a preprocessing step
 int Internal::global_preprocess () {
   std::ofstream outFile;
@@ -754,18 +800,36 @@ int Internal::global_preprocess () {
 
   double original_time = time ();
 
+  vector<int> sorted_literals;
+
+  if (opts.globalisort) {
+    sorted_literals = get_sorted_literals ();
+  }
+
   for (int count = 1; count <= Internal::max_var; count++) {
 
     if (time () - original_time > opts.globaltimelim)
       break;
 
-    int i_no_polarity = (rand() % max_var) + 1;
-    int i_polarity = (rand() % 2);
-    int i = (i_polarity ? -1 : 1) * i_no_polarity;
-    // int i = i_no_polarity;
-    // i = 413;
-    if (opts.globalorderi)
+    int i;
+
+    if (opts.globalisort) {
+      printf("first case !\n");
+      if (count < sorted_literals.size()) {
+        i = sorted_literals[count];
+      } else {
+        break;
+      }
+    } else if (opts.globalorderi) {
+      printf("second case !\n");
       i = count;
+    } else {
+      printf("third case !\n");
+      int i_no_polarity = (rand() % max_var) + 1;
+      int i_polarity = (rand() % 2);
+      i = (i_polarity ? -1 : 1) * i_no_polarity;
+    }
+    printf("We are starting on i: %d\n", i);
     backtrack ();
     // need to have this outside to skip the extra unnecessary loops
     Flags &f = Internal::flags (i);
@@ -778,7 +842,8 @@ int Internal::global_preprocess () {
     if (!propagate ()) {
       analyze ();
       if (!propagate ()) {
-        // printf("IN EARLY PROPAGATE: found unsat from %d\n", i);
+        printf("IN EARLY PROPAGATE: found unsat from %d\n", i);
+        analyze ();
         break;
       }
       // printf("IN EARLY PROPAGATE: found conflict from %d\n", i);
@@ -874,6 +939,7 @@ int Internal::global_preprocess () {
       analyze ();
     if (unsat) return 20;
   }
+  if (unsat) return 20;
   return 0;
 }
 
@@ -1049,6 +1115,7 @@ int Internal::solve (bool preprocess_only) {
     res = preprocess ();
   if (!res && opts.globalpreprocess)
     res = global_preprocess ();
+    printf("The res is %d\n", res);
     backtrack ();
   if (!preprocess_only) {
     if (!res && !level)

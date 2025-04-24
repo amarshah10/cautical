@@ -2,7 +2,26 @@
 import argparse
 import statistics
 import re
+import pandas as pd
 from collections import defaultdict
+
+def load_prelearn_times():
+    """Load prelearn times and original times from both CSV files"""
+    df2023 = pd.read_csv('results2023.csv')
+    df2024 = pd.read_csv('results2024.csv')
+    # Create dictionaries mapping filenames to times
+    prelearn_times = {}
+    original_times = {}
+    # First add 2023 data
+    for _, row in df2023.iterrows():
+        prelearn_times[row['file_name']] = row['median_time_prelearn']
+        original_times[row['file_name']] = row['original_time']
+    # Then add 2024 data for any files not in 2023
+    for _, row in df2024.iterrows():
+        if row['file_name'] not in prelearn_times:
+            prelearn_times[row['file_name']] = row['median_time_prelearn']
+            original_times[row['file_name']] = row['original_time']
+    return prelearn_times, original_times
 
 def parse_line(line):
     """
@@ -38,6 +57,9 @@ def summarize(times):
     }
 
 def analyze_log(file_path, options):
+    # Load prelearn times and original times
+    prelearn_times, original_times = load_prelearn_times()
+    
     with open(file_path, "r") as f:
         lines = f.readlines()
 
@@ -67,12 +89,12 @@ def analyze_log(file_path, options):
 
     # Column config
     stat_col_width = 10
-    header = ["Query"] + [f"{opt}" for opt in options] + ["Neither"]
+    header = ["Query"] + [f"{opt}" for opt in options] + ["Neither", "Prelearn", "Original"]
     header_fmt = f"{{:<{query_col_width}}} | " + " | ".join(
         [f"{{:<{stat_col_width}}}"] * (len(header) - 1)
     )
     row_fmt = f"{{:<{query_col_width}}} | " + " | ".join(
-        [f"med={{:<{stat_col_width}}}"] * (len(header) - 1) # ["μ={:<7} med={:<7} min={:<7} max={:<7}"] * (len(header) - 1)
+        [f"med={{:<{stat_col_width}}}"] * (len(header) - 3) + [f"{{:<{stat_col_width}}}"] * 2
     )
 
     print(header_fmt.format(*header))
@@ -84,13 +106,21 @@ def analyze_log(file_path, options):
             s = summarize(data[key])
             stat_list.extend([
                 str(s["median"]),
-                # str(s["mean"]), str(s["min"]), str(s["max"])
             ])
+        # Add prelearn time if available, otherwise "N/A"
+        prelearn_time = prelearn_times.get(file, "N/A")
+        if prelearn_time != "N/A":
+            prelearn_time = prelearn_time + 30
+            prelearn_time = f"{prelearn_time:.2f}"
+        stat_list.append(prelearn_time)
+        
+        # Add original time if available, otherwise "N/A"
+        original_time = original_times.get(file, "N/A")
+        if original_time != "N/A":
+            original_time = f"{original_time:.2f}"
+        stat_list.append(original_time)
+        
         print(row_fmt.format(file, *stat_list))
-
-
-
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compare CaDiCaL timing for multiple options")

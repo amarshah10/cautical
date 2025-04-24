@@ -106,10 +106,11 @@ OPTION( globalalphaarandom,0,  0,  1,0,0,1, "sorts alpha_a randomly") \
 OPTION( globalalphaasort,  0,  0,  1,0,0,1, "sorts alpha_a respecting the partial order given by implication") \
 OPTION( globalbcp,         0,  0,  1,0,0,1, "will shrink GBCs based on binary clauses not propagation") \
 OPTION( globalbothpol,     1,  0,  1,0,0,1, "for j of the pairs of propagants, we consider it in poth polarities") \
-OPTION( globalfiltertriv,  0,  0,  1,0,0,1, "will filter out the trivial clauses") \
+OPTION( globalfiltertriv,  1,  0,  1,0,0,1, "will filter out the trivial clauses") \
+OPTION( globalisort,       0,  0,  1,0,0,1, "will sort the first propagated literal in the globally blocked step") \
 OPTION( globallearn,       1,  0,  1,0,0,1, "learn clauses in the globally blocked step") \
-OPTION( globalmaxclause, 512, 0, 512,0,0,1, "maximum number of globally blocked clauses allowed at each level")\
-OPTION( globalmaxlen,    1e9, 0, 2e9,0,0,1, "maximum length of globally blocked clauses allowed")\
+OPTION( globalmaxclause,   0, 0, 512,0,0,1, "maximum number of globally blocked clauses allowed at each level")\
+OPTION( globalmaxlen,      2, 0, 2e9,0,0,1, "maximum length of globally blocked clauses allowed")\
 OPTION( globalnoshrink,    0,  0,  1,0,0,1, "will not shrink globally blocked clauses") \
 OPTION( globalorderi,      0,  0,  1,0,0,1, "will consider the first literal to be propagate i in increasing order") \
 OPTION( globalpreprocess,  0,  0,  1,0,0,1, "will learn gbc's in a preprocessing step") \
