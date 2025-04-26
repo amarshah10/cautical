@@ -367,7 +367,7 @@ bool Internal::check_if_clause_trivial(vector<int> c) {
     return is_trivial;
 }
 
-bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& outFile_pr) {
+bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& outFile_pr, int original_time) {
 
     START (global);
 
@@ -379,6 +379,12 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
         // skip learned (redundant) clauses (but only when we are not in proof checking mode)
         // todo: need to
         if (c->redundant && !proof) continue;
+
+        if (time () - original_time > opts.globaltimelim) {
+            STOP (global);
+            return false;
+        }
+          
 
 
         // current assignment satisfies current clause
@@ -491,6 +497,10 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
     bool adding_a_clause = false;
     if (alpha_a_useful.empty() || opts.globalnoshrink) {
         for (int i=0; i < std::min(opts.globalmaxclause, static_cast<int>(clauses_to_add.size())); i++){
+            if (time () - original_time > opts.globaltimelim) {
+                STOP (global);
+                return false;
+            }
             adding_a_clause = true;
             vector<int> new_clause = clauses_to_add[i];
             if (!(opts.globalfiltertriv && check_if_clause_trivial (new_clause)))

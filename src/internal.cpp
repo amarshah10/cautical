@@ -777,6 +777,7 @@ vector<int> Internal::get_sorted_literals () {
 
 // amar : created an option to learn globally blocked clauses in a preprocessing step
 int Internal::global_preprocess () {
+  START (global_preprocess);
   std::ofstream outFile;
   char* filename = getenv("CADICAL_FILENAME");
   outFile.open (filename);
@@ -790,7 +791,7 @@ int Internal::global_preprocess () {
 
   unsigned int seed = static_cast<unsigned int>(std::time(NULL)); // Store the seed
 
-  LOG("We are using the SEED: ", seed);
+  printf("We are using the SEED: ", seed);
   srand(seed);
 
   outFile_pr.open (filename_pr);
@@ -855,6 +856,8 @@ int Internal::global_preprocess () {
     // print_vector (touched_literals);
     // for (int j = i + 1; j <= Internal::max_var; j++) {
     for (auto j : touched_literals) {
+        if (time () - original_time > opts.globaltimelim)
+          break;
         printf("We are starting on j: %d \n", j);
         assert (!unsat);
         vector<int> polarities = opts.globalbothpol ? std::vector<int>{-1, 1} : std::vector<int>{1};
@@ -908,17 +911,26 @@ int Internal::global_preprocess () {
                 }
               }
             } else {
-              bool added_a_clause = least_conditional_part(outFile, outFile_pr);
+              bool added_a_clause = least_conditional_part(outFile, outFile_pr, original_time);
               backtrack ();
               printf("We have just finished adding a clause step!\n");
             }
           }
-        if (unsat) return 20;
+        if (unsat) {
+          STOP (global_preprocess);
+          return 20;
+        }
       }
-      if (unsat) return 20;
+      if (unsat) {
+        STOP (global_preprocess);
+        return 20;
+      }
     }
     printf("out of loop!\n");
-    if (unsat) return 20;
+    if (unsat) {
+      STOP (global_preprocess);
+      return 20;
+    }
     backtrack ();
     f = Internal::flags (i);
     if (f.status == Flags::FIXED) {
@@ -937,9 +949,16 @@ int Internal::global_preprocess () {
     search_assume_decision (-i);
     if (!propagate ())
       analyze ();
-    if (unsat) return 20;
+    if (unsat) {
+      STOP (global_preprocess);
+      return 20;
+    }
   }
-  if (unsat) return 20;
+  if (unsat) {
+    STOP (global_preprocess);
+    return 20;
+  }
+  STOP (global_preprocess);
   return 0;
 }
 

@@ -54,6 +54,7 @@ struct Internal;
   PROFILE (decompose, 3) \
   PROFILE (elim, 2) \
   PROFILE (extend, 3) \
+  PROFILE (global_preprocess, 2) \
   PROFILE (global, 3) \
   PROFILE (trivial, 3) \
   PROFILE (instantiate, 2) \

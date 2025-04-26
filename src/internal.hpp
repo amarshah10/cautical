@@ -1249,7 +1249,7 @@ struct Internal {
   int global_preprocess ();
   vector<int> get_touched_literals ();
   vector<int> get_sorted_literals ();
-  bool least_conditional_part(std::ofstream& outFile, std::ofstream& outFile_pr);
+  bool least_conditional_part(std::ofstream& outFile, std::ofstream& outFile_pr, int original_time);
   bool compare_alpha_a(int a, int b);
   void custom_sort_alpha_a(std::vector<int>& alpha_a);
   void imp_sort_alpha_a (std::vector<int>& alpha_a);

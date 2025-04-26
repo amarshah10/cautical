@@ -100,7 +100,6 @@ OPTION( flushfactor,       3,  1,1e3,0,0,1, "interval increase") \
 OPTION( flushint,        1e5,  1,2e9,0,0,1, "initial limit") \
 OPTION( forcephase,        0,  0,  1,0,0,1, "always use initial phase") \
 OPTION( frat,              0,  0,  2,0,0,1, "1=frat(lrat), 2=frat(drat)") \
-OPTION( global,            0,  0,  1,0,0,1, "globally blocked clause addition") \
 OPTION( globalalphaagreedy,0,  0,  1,0,0,1, "sorts alpha_a using a greedy approximate set-cover algorithm") \
 OPTION( globalalphaarandom,0,  0,  1,0,0,1, "sorts alpha_a randomly") \
 OPTION( globalalphaasort,  0,  0,  1,0,0,1, "sorts alpha_a respecting the partial order given by implication") \
