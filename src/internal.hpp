@@ -200,6 +200,7 @@ struct Internal {
   Phases phases;                // saved, target and best phases
   signed char *vals;            // assignment [-max_var,max_var]
   vector<signed char> marks;    // signed marks [1,max_var]
+  vector<bool> globalmarks;     // a mark used in global.cpp
   vector<unsigned> frozentab;   // frozen counters [1,max_var]
   vector<int> i2e;              // maps internal 'idx' to external 'lit'
   vector<unsigned> relevanttab; // Reference counts for observed variables.
@@ -513,6 +514,24 @@ struct Internal {
   void mark2 (Clause *);
   void unmark_clause (); // unmark 'this->clause'
   void unmark (Clause *);
+
+  // amar : we are adding are own version of getbit, setbit, etc. to be used in global.cpp
+
+  bool global_getbit (int lit) const {
+    return globalmarks[vidx (lit)];
+  }
+  void global_setbit (int lit) {
+    printf("About to set bit with literal %d with val: %d\n", lit, global_getbit (lit));
+    assert (!global_getbit (lit));
+    marks[vidx (lit)] = true;
+    assert (global_getbit (lit));
+  }
+  void global_unsetbit (int lit) {
+    printf("We are unsetting literal %d\n", lit);
+    assert (global_getbit (lit));
+    marks[vidx (lit)] = false;
+    assert (!global_getbit (lit));
+  }
 
   // Watch literal 'lit' in clause with blocking literal 'blit'.
   // Inlined here, since it occurs in the tight inner loop of 'propagate'.

@@ -150,10 +150,12 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> al
             backtrack (0);
             search_assume_decision(-alpha_a[i]);
             if (!propagate ()) {
+                // printf("10. We are in propagate with %d!\n", -alpha_a[i]);
                 analyze ();
                 if (unsat)
                     break;
                 if (!propagate ()) {
+                    // printf("11. We are in propagate with %d!\n", -alpha_a[i]);
                     analyze ();
                     break;
                 }
@@ -192,10 +194,10 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> al
         alpha_a_useful_final.push_back(alpha_a_useful[index]);
     }
 
-    printf("alpha_a_useful_final: ");
-    print_vector(alpha_a_useful_final);
-    printf("neg_alpha_c_without_c0: ");
-    print_vector(neg_alpha_c_without_c0);
+    // printf("alpha_a_useful_final: ");
+    // print_vector(alpha_a_useful_final);
+    // printf("neg_alpha_c_without_c0: ");
+    // print_vector(neg_alpha_c_without_c0);
 
     return std::make_pair(alpha_a_useful_final, neg_alpha_c_without_c0);
 }
@@ -248,11 +250,13 @@ bool Internal::propagate_shrink(vector<int> alpha_a, vector<int> alpha_a_useful,
 
 
                 if (!propagate ()) {
+                    // printf("12. We are in propagate with %d!\n", -alpha_a[i]);
                     analyze ();
                     // I am not sure if the conflict checking here is completely correct
                     if (!propagate ()) {
+                        // printf("13. We are in propagate with %d!\n", -alpha_a[i]);
                         // printf("At position 3; propagated: %d; trail.size: %d \n", propagated, trail.size ());
-                        printf ("got to a conflict \n");
+                        // printf ("got to a conflict \n");
                         STOP (global);
                         return false;
                     }
@@ -270,7 +274,7 @@ bool Internal::propagate_shrink(vector<int> alpha_a, vector<int> alpha_a_useful,
                     int v = val (neg_alpha_c_minus_c0[j]);
                     if (v < 0) {
                         // print_assignment ();
-                        printf("The literal %d in ~alpha_a implies literal %d in alpha_c by unit propagation \n", -alpha_a[i], -neg_alpha_c_minus_c0[j]);
+                        // printf("The literal %d in ~alpha_a implies literal %d in alpha_c by unit propagation \n", -alpha_a[i], -neg_alpha_c_minus_c0[j]);
                         // new_neg_alpha_c_minus_c0.push_back(neg_alpha_c_minus_c0[j]);
                         assert (j < neg_alpha_c_minus_c0.size());
                         neg_alpha_c_minus_c0.erase(neg_alpha_c_minus_c0.begin() + j);
@@ -328,7 +332,7 @@ void Internal::add_clause(vector<int> new_clause, int lit, vector<int> negated_c
             Clause* c = new_learned_weak_irredundant_global_clause (lit, negated_conditional, autarky, 1);
         } else {
             assign_original_unit_gbc (++clause_id, clause[0], autarky);
-            printf("we are adding the globally blocked unit: %d\n", clause[0]);
+            // printf("we are adding the globally blocked unit: %d\n", clause[0]);
         }
     }
     if (opts.globalrecord)
@@ -356,13 +360,14 @@ bool Internal::check_if_clause_trivial(vector<int> c) {
         search_assume_decision (-1 * lit);
         
         if (!propagate ()) {
-            printf("found a conflict on %d!\n", lit);
+            // printf("9. We are in propagate with %d!\n", -1 *lit);
+            // printf("found a conflict on %d!\n", lit);
             analyze (); // todo: there is an issue where if analyze finds a conflict right now we learn it :(
             while (!unsat && !propagate ()) {
-                printf("found another conflict!\n");
+                // printf("found another conflict!\n");
                 analyze ();
             }
-            printf("finished with conflicts!\n");
+            // printf("finished with conflicts!\n");
             is_trivial = true;
             break;
         }
@@ -430,7 +435,7 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
                 if (f.status == Flags::FIXED) {
                     continue;
                 }
-                if (!getbit(lit, 0)) {
+                if (!global_getbit(lit)) {
                     alpha_touches.push_back(lit);
                 }
             }
@@ -441,8 +446,8 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
             neg_alpha_c.insert(neg_alpha_c.end(), alpha_touches.begin(), alpha_touches.end());
             // set "added to neg_alpha_c" bit
             for (int i=0; i < alpha_touches.size(); i++){
-                // printf("adding to neg_alpha_c: %d \n", alpha_touches[i]);
-                setbit(alpha_touches[i], 0);
+                printf("adding to neg_alpha_c: %d \n", alpha_touches[i]);
+                global_setbit(alpha_touches[i]);
             }
         }
     }
@@ -471,8 +476,9 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
 
     // have to unset all of the bits
     for(int i=0; i < neg_alpha_c.size(); i++){
-        unsetbit(neg_alpha_c[i], 0);
+        global_unsetbit(neg_alpha_c[i]);
     }
+    // todo: write a thing that checks that all bits have been properly unset
 
 
     vector <int>neg_alpha_c_minus_c0(neg_alpha_c);
@@ -501,6 +507,7 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
 
 
     bool adding_a_clause = false;
+    backtrack ();
     if (alpha_a_useful.empty() || opts.globalnoshrink) {
         for (int i=0; i < std::min(opts.globalmaxclause, static_cast<int>(clauses_to_add.size())); i++){
             if (time () - original_time > opts.globaltimelim) {

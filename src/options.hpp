@@ -116,6 +116,7 @@ OPTION( globalpreprocess,  0,  0,  1,0,0,1, "will learn gbc's in a preprocessing
 OPTION( globalrandom,      0,  0,  1,0,0,1, "randomly gives decisions for globally blocked state") \
 OPTION( globalrecord,      0,  0,  1,0,0,1, "record the global clauses learnt in global_clauses.txt") \
 OPTION( globalrecordnonpr, 0,  0,  1,0,0,1, "whether to record the non-pr clauses as well in global_clauses.txt") \
+OPTION( globalseed,        0,  0,2e9,0,0,1, "the seed we use for variables to propagate on (default 0 is a random seed)")\
 OPTION( globaltimelim,    30,  0,2e9,0,0,1, "time spent in global inprocessing stage")\
 OPTION( globaltouch,       1,  0,  1,0,0,1, "used the touched clauses as a decision heuristic") \
 OPTION( idrup,             0,  0,  1,0,0,1, "incremental proof format") \

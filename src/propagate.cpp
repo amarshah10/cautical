@@ -124,11 +124,13 @@ inline void Internal::search_assign (int lit, Clause *reason) {
   // we can not calculate the real assignment level.
   // The function assignment_level () will also assign the current level
   // to literals with external reason.
-  if (!reason)
+  if (!reason) {
+    // printf("!reason case\n;");
     lit_level = 0; // unit
-  else if (reason == decision_reason)
+  } else if (reason == decision_reason) {
+    // printf("reason == decision_reason case\n;");
     lit_level = level, reason = 0;
-  else if (opts.chrono)
+  } else if (opts.chrono)
     lit_level = assignment_level (lit, reason);
   else
     lit_level = level;
@@ -141,8 +143,10 @@ inline void Internal::search_assign (int lit, Clause *reason) {
   assert ((int) num_assigned < max_var);
   assert (num_assigned == trail.size ());
   num_assigned++;
-  if (!lit_level && !from_external)
+  if (!lit_level && !from_external) {
+    // printf("We are assigning %d\n with reason: %d and lit level : %d \n", lit, reason, lit_level);
     learn_unit_clause (lit); // increases 'stats.fixed'
+  }
   assert (lit_level || !from_external);
   const signed char tmp = sign (lit);
   set_val (idx, tmp);
@@ -178,6 +182,7 @@ inline void Internal::search_assign (int lit, Clause *reason) {
 
 void Internal::assign_unit (int lit) {
   assert (!level);
+  // printf("We are assiging a unit %d", lit);
   search_assign (lit, 0);
 }
 
@@ -190,17 +195,20 @@ void Internal::search_assume_decision (int lit) {
   new_trail_level (lit);
   notify_decision ();
   LOG ("search decide %d", lit);
+  // printf("search_assume_decision %d", lit);
   search_assign (lit, decision_reason);
 }
 
 void Internal::search_assign_driving (int lit, Clause *c) {
   require_mode (SEARCH);
+  // printf("search_assign_driving %d", lit);
   search_assign (lit, c);
   notify_assignments ();
 }
 
 void Internal::search_assign_external (int lit) {
   require_mode (SEARCH);
+  // printf("search_assign_external %d", lit);
   search_assign (lit, external_reason);
   notify_assignments ();
 }
@@ -288,6 +296,7 @@ bool Internal::propagate () {
           conflict = w.clause; // but continue ...
         else {
           build_chain_for_units (w.blit, w.clause, 0);
+          // printf("1. analyze search assign %d", w.blit);
           search_assign (w.blit, w.clause);
           // lrat_chain.clear (); done in search_assign
         }
@@ -387,6 +396,7 @@ bool Internal::propagate () {
             // assigned to false (still 'v < 0'), thus we found a unit.
             //
             build_chain_for_units (other, w.clause, 0);
+            // printf("2. analyze search assign %d", other);
             search_assign (other, w.clause);
             // lrat_chain.clear (); done in search_assign
 

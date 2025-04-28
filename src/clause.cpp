@@ -357,6 +357,7 @@ void Internal::assign_original_unit (uint64_t id, int lit) {
 // Assign original unit but when the unit is a gbc
 // so we need to add a proof step justifying it
 void Internal::assign_original_unit_gbc (uint64_t id, int lit, vector<int> autarky) {
+  printf("We are adding the gbc unit %d to the proof\n", lit);
   assert (!level || opts.chrono);
   assert (!unsat);
   const int idx = vidx (lit);

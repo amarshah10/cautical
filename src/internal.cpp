@@ -765,12 +765,12 @@ vector<int> Internal::get_sorted_literals () {
          return a.second > b.second;
        });
   // Extract sorted literals
-  printf("we have the sorted literals");
+  // printf("we have the sorted literals");
   for (const auto& p : lit_counts) {
-    printf("%d (%d) ", p.first, p.second);
+    // printf("%d (%d) ", p.first, p.second);
     sorted_literals.push_back(p.first);
   }
-  printf("\n");
+  // printf("\n");
   return sorted_literals;
 }
 
@@ -778,6 +778,12 @@ vector<int> Internal::get_sorted_literals () {
 // amar : created an option to learn globally blocked clauses in a preprocessing step
 int Internal::global_preprocess () {
   START (global_preprocess);
+
+    globalmarks.resize (2 * max_var + 1);
+
+  for (int i = 0; i < globalmarks.size (); i++) {
+    globalmarks[i] = 0;
+  }
   std::ofstream outFile;
   char* filename = getenv("CADICAL_FILENAME");
   outFile.open (filename);
@@ -790,8 +796,9 @@ int Internal::global_preprocess () {
   filename_pr += "_pr";
 
   unsigned int seed = static_cast<unsigned int>(std::time(NULL)); // Store the seed
+  // seed = 1745810544;
 
-  printf("We are using the SEED: ", seed);
+  printf("We are using the SEED: %d", seed);
   srand(seed);
 
   outFile_pr.open (filename_pr);
@@ -815,22 +822,22 @@ int Internal::global_preprocess () {
     int i;
 
     if (opts.globalisort) {
-      printf("first case !\n");
+      // printf("first case !\n");
       if (count < sorted_literals.size()) {
         i = sorted_literals[count];
       } else {
         break;
       }
     } else if (opts.globalorderi) {
-      printf("second case !\n");
+      // printf("second case !\n");
       i = count;
     } else {
-      printf("third case !\n");
+      // printf("third case !\n");
       int i_no_polarity = (rand() % max_var) + 1;
       int i_polarity = (rand() % 2);
       i = (i_polarity ? -1 : 1) * i_no_polarity;
     }
-    printf("We are starting on i: %d\n", i);
+    // printf("We are starting on i: %d\n", i);
     backtrack ();
     // need to have this outside to skip the extra unnecessary loops
     Flags &f = Internal::flags (i);
@@ -838,12 +845,14 @@ int Internal::global_preprocess () {
       // printf("skipping ALL of %d \n", i);
       continue;
     }
-    printf("Before on i: %d", i);
+    // printf("Before on i: %d", i);
     search_assume_decision (i);
     if (!propagate ()) {
+      // printf("1. We are in propagate with %d!\n", i);
       analyze ();
       if (!propagate ()) {
-        printf("IN EARLY PROPAGATE: found unsat from %d\n", i);
+        // printf("2. We are in propagate with %d!\n", i);
+        // printf("IN EARLY PROPAGATE: found unsat from %d\n", i);
         analyze ();
         break;
       }
@@ -858,7 +867,7 @@ int Internal::global_preprocess () {
     for (auto j : touched_literals) {
         if (time () - original_time > opts.globaltimelim)
           break;
-        printf("We are starting on j: %d \n", j);
+        // printf("We are starting on j: %d \n", j);
         assert (!unsat);
         vector<int> polarities = opts.globalbothpol ? std::vector<int>{-1, 1} : std::vector<int>{1};
         for (int polarity : polarities) { 
@@ -886,9 +895,11 @@ int Internal::global_preprocess () {
           backtrack ();
           search_assume_decision (i);
           if (!propagate ()) {
+            // printf("3. We are in propagate with %d!\n", i);
             // printf ("We reach a conflict from a single propagation on %d and will analyze\n", i);
             analyze ();
             if (!unsat && !propagate ()) {
+              // printf("4. We are in propagate with %d!\n", i);
               analyze ();
               // printf ("We should have reached a contradiction! \n");
               break;
@@ -903,14 +914,18 @@ int Internal::global_preprocess () {
             }
             search_assume_decision (j_polar);
             if (!propagate ()) {
+              // printf("5. We are in propagate with %d!\n", j_polar);
               analyze ();
               if (!unsat && !propagate ()) {
+                // printf("6. We are in propagate with %d!\n", j_polar);
                 analyze ();
                 if (!unsat && !propagate ()) {
+                  // printf("7. We are in propagate with %d!\n", j_polar);
                   analyze ();
                 }
               }
             } else {
+              backtrack ();
               bool added_a_clause = least_conditional_part(outFile, outFile_pr, original_time);
               backtrack ();
               printf("We have just finished adding a clause step!\n");
@@ -934,12 +949,13 @@ int Internal::global_preprocess () {
     backtrack ();
     f = Internal::flags (i);
     if (f.status == Flags::FIXED) {
-      printf("skipping ALL of %d \n", i);
+      // printf("skipping ALL of %d \n", i);
       continue;
     }
     search_assume_decision (i);
     if (!propagate ()) {
-      printf("6.Right before analyze!\n");
+      // printf("8. We are in propagate with %d!\n", i);
+      // printf("6.Right before analyze!\n");
       analyze ();
       backtrack ();
       continue;
@@ -947,8 +963,10 @@ int Internal::global_preprocess () {
     backtrack ();
     assert (Internal::flags (i).status != Flags::FIXED);
     search_assume_decision (-i);
-    if (!propagate ())
+    if (!propagate ()) {
+      // printf("9. We are in propagate with %d!\n", i);
       analyze ();
+    }
     if (unsat) {
       STOP (global_preprocess);
       return 20;
@@ -1134,7 +1152,7 @@ int Internal::solve (bool preprocess_only) {
     res = preprocess ();
   if (!res && opts.globalpreprocess)
     res = global_preprocess ();
-    printf("The res is %d\n", res);
+    // printf("The res is %d\n", res);
     backtrack ();
   if (!preprocess_only) {
     if (!res && !level)

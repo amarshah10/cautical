@@ -29,6 +29,7 @@ void Internal::learn_empty_clause () {
 }
 
 void Internal::learn_unit_clause (int lit) {
+  // printf("We are learning the unit clause: %d\n", lit);
   assert (!unsat);
   LOG ("learned unit clause %d", lit);
   external->check_learned_unit_clause (lit);
