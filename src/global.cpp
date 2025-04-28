@@ -192,6 +192,11 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> al
         alpha_a_useful_final.push_back(alpha_a_useful[index]);
     }
 
+    printf("alpha_a_useful_final: ");
+    print_vector(alpha_a_useful_final);
+    printf("neg_alpha_c_without_c0: ");
+    print_vector(neg_alpha_c_without_c0);
+
     return std::make_pair(alpha_a_useful_final, neg_alpha_c_without_c0);
 }
 
@@ -488,6 +493,7 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
         } else {
            bool end_early = propagate_shrink(alpha_a, alpha_a_useful, neg_alpha_c_minus_c0);
            if (!end_early) {
+             STOP (global);
              return false;
            }
         }
