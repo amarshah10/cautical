@@ -795,8 +795,13 @@ int Internal::global_preprocess () {
   std::string filename_pr = filename;  // Implicit conversion
   filename_pr += "_pr";
 
-  unsigned int seed = static_cast<unsigned int>(std::time(NULL)); // Store the seed
-  // seed = 1745810544;
+  unsigned int seed;
+  if (!opts.globalseed)
+    seed = static_cast<unsigned int>(std::time(NULL)); // Store the seed
+  else
+    seed = opts.globalseed;
+
+  // seed = 1745883155;
 
   printf("We are using the SEED: %d", seed);
   srand(seed);
@@ -873,13 +878,6 @@ int Internal::global_preprocess () {
         for (int polarity : polarities) { 
           assert (!unsat);
           int j_polar = polarity * j;
-          // j_polar = 428;
-          // if (i > 15) 
-          //   j_polar = i - 14;
-          // else
-          //   j_polar = i + 14;
-          printf("We are propagating on %d and %d \n", i, j_polar);
-          // printf("We have propagated: %d and trail.size %d \n", propagated, trail.size ());
 
           // need to have this in the inner loop beause this could be set in the inner loop!!!!
           Flags &f = Internal::flags (i);
@@ -892,85 +890,95 @@ int Internal::global_preprocess () {
             // printf("skipping one interation of %d \n", j_polar);
             continue;
           }
+          //printf("We are propagating on %d and %d \n", i, j_polar);
+          //printf("We have propagated: %d and trail.size %d \n", propagated, trail.size ());
+
+          //printf("Made it past the skip at level %d\n", level);
           backtrack ();
-          search_assume_decision (i);
-          if (!propagate ()) {
-            // printf("3. We are in propagate with %d!\n", i);
-            // printf ("We reach a conflict from a single propagation on %d and will analyze\n", i);
+          //printf("Made it past the backtrack at level %d\n", level);
+          while (!propagate ()) {
             analyze ();
-            if (!unsat && !propagate ()) {
-              // printf("4. We are in propagate with %d!\n", i);
+          }
+          //printf("Made it past the propagate at level %d\n", level);
+          
+          //printf("We have propagated: %d and trail.size %d \n", propagated, trail.size ());
+          search_assume_decision (i);
+          //printf("We have search_assume_decision on i: %d\n", i);
+          if (!propagate ()) {
+            //printf("3. We are in propagate with %d!\n", i);
+            //printf ("We reach a conflict from a single propagation on %d and will analyze\n", i);
+            analyze ();
+            while (!unsat && !propagate ()) {
               analyze ();
-              // printf ("We should have reached a contradiction! \n");
-              break;
-              // if (!propagate ()) {
-              //   printf("Made it inside the unecessary propagation! \n");
-              // }
             }
-          } else {
+          } else { 
             if (val (j_polar) != 0) {
-              // printf("propagating %d give %d \n", i, j_polar);
+              //printf("propagating %d give %d \n", i, j_polar);
               continue;
             }
             search_assume_decision (j_polar);
+            //printf("We have search_assume_decision on j_polar: %d\n", j_polar);
             if (!propagate ()) {
-              // printf("5. We are in propagate with %d!\n", j_polar);
+              //printf("5. We are in propagate with %d!\n", j_polar);
               analyze ();
-              if (!unsat && !propagate ()) {
-                // printf("6. We are in propagate with %d!\n", j_polar);
+              while (!unsat && !propagate ()) {
                 analyze ();
-                if (!unsat && !propagate ()) {
-                  // printf("7. We are in propagate with %d!\n", j_polar);
-                  analyze ();
-                }
               }
             } else {
-              backtrack ();
+              // backtrack ();
               bool added_a_clause = least_conditional_part(outFile, outFile_pr, original_time);
               backtrack ();
-              printf("We have just finished adding a clause step!\n");
+              //printf("We have just finished adding a clause step!\n");
             }
           }
+          if (unsat) {
+            STOP (global_preprocess);
+            return 20;
+          }
+        }
         if (unsat) {
           STOP (global_preprocess);
           return 20;
         }
       }
+      //printf("out of loop!\n");
       if (unsat) {
         STOP (global_preprocess);
         return 20;
       }
-    }
-    printf("out of loop!\n");
-    if (unsat) {
-      STOP (global_preprocess);
-      return 20;
-    }
-    backtrack ();
-    f = Internal::flags (i);
-    if (f.status == Flags::FIXED) {
-      // printf("skipping ALL of %d \n", i);
-      continue;
-    }
-    search_assume_decision (i);
-    if (!propagate ()) {
-      // printf("8. We are in propagate with %d!\n", i);
-      // printf("6.Right before analyze!\n");
-      analyze ();
       backtrack ();
-      continue;
-    }
-    backtrack ();
-    assert (Internal::flags (i).status != Flags::FIXED);
-    search_assume_decision (-i);
-    if (!propagate ()) {
-      // printf("9. We are in propagate with %d!\n", i);
-      analyze ();
-    }
-    if (unsat) {
-      STOP (global_preprocess);
-      return 20;
-    }
+      f = Internal::flags (i);
+      if (f.status == Flags::FIXED) {
+        // //printf("skipping ALL of %d \n", i);
+        continue;
+      }
+      search_assume_decision (i);
+      if (!propagate ()) {
+        //printf("8. We are in propagate with %d!\n", i);
+        // //printf("6.Right before analyze!\n");
+        analyze ();
+        while (!unsat && !propagate ()) {
+          analyze ();
+        }
+        backtrack ();
+        continue;
+      }
+      backtrack ();
+      assert (Internal::flags (i).status != Flags::FIXED);
+      search_assume_decision (-i);
+      if (!propagate ()) {
+        //printf("8. We are in propagate with %d!\n", i);
+        analyze ();
+        while (!unsat && !propagate ()) {
+          analyze ();
+        }
+        backtrack ();
+        continue;
+      }
+      if (unsat) {
+        STOP (global_preprocess);
+        return 20;
+      }
   }
   if (unsat) {
     STOP (global_preprocess);

@@ -135,11 +135,11 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> al
     vector<int> alpha_a_useful;
     vector<unordered_set<int>> alpha_a_propagated;
 
-    printf("doing a greedy_sort_alpha_a with: \n");
-    printf("alpha_a: ");
-    print_vector(alpha_a);
-    printf("neg_alpha_c");
-    print_vector(neg_alpha_c);
+    // printf("doing a greedy_sort_alpha_a with: \n");
+    // printf("alpha_a: ");
+    // print_vector(alpha_a);
+    // printf("neg_alpha_c");
+    // print_vector(neg_alpha_c);
 
     for (int i=0; i < alpha_a.size(); i++){
             Flags &f = flags (alpha_a[i]);
@@ -177,13 +177,13 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> al
 
     backtrack (0);
 
-    printf("We are calling greedySsetCover!\n ");
-    printf("Subsets:");
-    printVectorOfSets(alpha_a_propagated);
-    printf("alpha_a_useful: ");
-    print_vector(alpha_a_useful);
-    printf("neg_alpha_c:");
-    print_vector (neg_alpha_c);
+    // printf("We are calling greedySsetCover!\n ");
+    // printf("Subsets:");
+    // printVectorOfSets(alpha_a_propagated);
+    // printf("alpha_a_useful: ");
+    // print_vector(alpha_a_useful);
+    // printf("neg_alpha_c:");
+    // print_vector (neg_alpha_c);
 
     auto [chosen_indices, neg_alpha_c_without_c0] = greedySetCover(alpha_a_propagated, neg_alpha_c);
 
@@ -237,54 +237,54 @@ void Internal::bcp_shrink(vector<int> alpha_a, vector<int> alpha_a_useful, vecto
 bool Internal::propagate_shrink(vector<int> alpha_a, vector<int> alpha_a_useful, vector<int> neg_alpha_c_minus_c0) {
      for (int i=0; i < alpha_a.size(); i++){
 
-                // todo : I think this shouldn't be necessary because we checked it earlier when creating alpha_a
-                Flags &f = flags (alpha_a[i]);
-                if (f.status == Flags::FIXED) {
-                    continue;
-                }   
-                backtrack (0);
-                search_assume_decision(-alpha_a[i]); 
+        // todo : I think this shouldn't be necessary because we checked it earlier when creating alpha_a
+        Flags &f = flags (alpha_a[i]);
+        if (f.status == Flags::FIXED) {
+            continue;
+        }   
+        backtrack (0);
+        search_assume_decision(-alpha_a[i]); 
 
-                // if we learn a singleton conflict, the gbc becomes trivial
-                bool dont_learn_gbc = false;
+        // if we learn a singleton conflict, the gbc becomes trivial
+        bool dont_learn_gbc = false;
 
 
-                if (!propagate ()) {
-                    // printf("12. We are in propagate with %d!\n", -alpha_a[i]);
-                    analyze ();
-                    // I am not sure if the conflict checking here is completely correct
-                    if (!propagate ()) {
-                        // printf("13. We are in propagate with %d!\n", -alpha_a[i]);
-                        // printf("At position 3; propagated: %d; trail.size: %d \n", propagated, trail.size ());
-                        // printf ("got to a conflict \n");
-                        STOP (global);
-                        return false;
-                    }
-                    continue;
-                } 
+        if (!propagate ()) {
+            // printf("12. We are in propagate with %d!\n", -alpha_a[i]);
+            analyze ();
+            // I am not sure if the conflict checking here is completely correct
+            if (!propagate ()) {
+                // printf("13. We are in propagate with %d!\n", -alpha_a[i]);
+                // printf("At position 3; propagated: %d; trail.size: %d \n", propagated, trail.size ());
+                // printf ("got to a conflict \n");
+                STOP (global);
+                return false;
+            }
+            continue;
+        } 
 
-                bool keep_i = false;
+        bool keep_i = false;
 
-                LOG(neg_alpha_c_minus_c0, "We have neg_alpha_c_minus_c0:");
+        LOG(neg_alpha_c_minus_c0, "We have neg_alpha_c_minus_c0:");
 
-                // vector<int> new_neg_alpha_c_minus_c0;
-                // vector<int>::iterator it = neg_alpha_c_minus_c0.begin();
+        // vector<int> new_neg_alpha_c_minus_c0;
+        // vector<int>::iterator it = neg_alpha_c_minus_c0.begin();
 
-                for (int j=0; j < neg_alpha_c_minus_c0.size();) {
-                    int v = val (neg_alpha_c_minus_c0[j]);
-                    if (v < 0) {
-                        // print_assignment ();
-                        // printf("The literal %d in ~alpha_a implies literal %d in alpha_c by unit propagation \n", -alpha_a[i], -neg_alpha_c_minus_c0[j]);
-                        // new_neg_alpha_c_minus_c0.push_back(neg_alpha_c_minus_c0[j]);
-                        assert (j < neg_alpha_c_minus_c0.size());
-                        neg_alpha_c_minus_c0.erase(neg_alpha_c_minus_c0.begin() + j);
-                        keep_i = true;
-                    } else {
-                        j++;
-                    }
-                }
-                if (keep_i)
-                    alpha_a_useful.push_back(alpha_a[i]);
+        for (int j=0; j < neg_alpha_c_minus_c0.size();) {
+            int v = val (neg_alpha_c_minus_c0[j]);
+            if (v < 0) {
+                // print_assignment ();
+                // printf("The literal %d in ~alpha_a implies literal %d in alpha_c by unit propagation \n", -alpha_a[i], -neg_alpha_c_minus_c0[j]);
+                // new_neg_alpha_c_minus_c0.push_back(neg_alpha_c_minus_c0[j]);
+                assert (j < neg_alpha_c_minus_c0.size());
+                neg_alpha_c_minus_c0.erase(neg_alpha_c_minus_c0.begin() + j);
+                keep_i = true;
+            } else {
+                j++;
+            }
+        }
+        if (keep_i)
+            alpha_a_useful.push_back(alpha_a[i]);
             }
         // was remembering literals without this backtrack
         backtrack (0);
@@ -318,8 +318,8 @@ void Internal::record_clause (int lit, vector<int> negated_conditional, vector<i
 
 void Internal::add_clause(vector<int> new_clause, int lit, vector<int> negated_conditional, vector<int> autarky, std::ofstream& outFile, std::ofstream& outFile_pr) {
 
-    printf("We are adding the clause: ");
-    print_vector(new_clause);
+    // printf("We are adding the clause: ");
+    // print_vector(new_clause);
     // removing the lit from autarky and negated conditional
     autarky.erase(std::remove(autarky.begin(), autarky.end(), lit), autarky.end());
     negated_conditional.erase(std::remove(negated_conditional.begin(), negated_conditional.end(), lit), negated_conditional.end());
@@ -390,10 +390,10 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
         // todo: need to
         if (c->redundant && !proof) continue;
 
-        if (time () - original_time > opts.globaltimelim) {
-            STOP (global);
-            return false;
-        }
+        // if (time () - original_time > opts.globaltimelim) {
+        //     STOP (global);
+        //     return false;
+        // }
           
 
 
@@ -419,6 +419,7 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
             continue;
         }
 
+
         for (auto lit : *c) {
             const signed char lit_val = val (lit);
             if (lit_val > 0) { // positive assignment
@@ -435,7 +436,9 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
                 if (f.status == Flags::FIXED) {
                     continue;
                 }
+                // printf("1. We get here for lit %d", lit);
                 if (!global_getbit(lit)) {
+                    // printf("2. We get here for lit %d", lit);
                     alpha_touches.push_back(lit);
                 }
             }
@@ -446,7 +449,7 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
             neg_alpha_c.insert(neg_alpha_c.end(), alpha_touches.begin(), alpha_touches.end());
             // set "added to neg_alpha_c" bit
             for (int i=0; i < alpha_touches.size(); i++){
-                printf("adding to neg_alpha_c: %d \n", alpha_touches[i]);
+                // printf("adding to neg_alpha_c: %d \n", alpha_touches[i]);
                 global_setbit(alpha_touches[i]);
             }
         }
@@ -462,7 +465,7 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
     // todo: I'm not sure why this is?
 
     for (auto const& [key, val] : times_touched) {
-        if (!getbit(key, 0)) {
+        if (!global_getbit(key)) {
             if (!is_decision (key)) {
                 vector<int> new_clause = neg_alpha_c;
                 new_clause.push_back(key);
@@ -479,6 +482,11 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
         global_unsetbit(neg_alpha_c[i]);
     }
     // todo: write a thing that checks that all bits have been properly unset
+
+    // printf("We have: alpha_a: ");
+    // print_vector(alpha_a);
+    // printf("neg_alpha_c: ");
+    // print_vector(neg_alpha_c);
 
 
     vector <int>neg_alpha_c_minus_c0(neg_alpha_c);
@@ -507,7 +515,7 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
 
 
     bool adding_a_clause = false;
-    backtrack ();
+    // backtrack ();
     if (alpha_a_useful.empty() || opts.globalnoshrink) {
         for (int i=0; i < std::min(opts.globalmaxclause, static_cast<int>(clauses_to_add.size())); i++){
             if (time () - original_time > opts.globaltimelim) {

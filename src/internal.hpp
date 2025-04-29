@@ -521,15 +521,15 @@ struct Internal {
     return globalmarks[vidx (lit)];
   }
   void global_setbit (int lit) {
-    printf("About to set bit with literal %d with val: %d\n", lit, global_getbit (lit));
+    // printf("About to set bit with literal %d with val: %d\n", lit, global_getbit (lit));
     assert (!global_getbit (lit));
-    marks[vidx (lit)] = true;
+    globalmarks[vidx (lit)] = true;
     assert (global_getbit (lit));
   }
   void global_unsetbit (int lit) {
-    printf("We are unsetting literal %d\n", lit);
+    // printf("We are unsetting literal %d\n", lit);
     assert (global_getbit (lit));
-    marks[vidx (lit)] = false;
+    globalmarks[vidx (lit)] = false;
     assert (!global_getbit (lit));
   }
 
