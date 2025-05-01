@@ -101,15 +101,17 @@ OPTION( flushint,        1e5,  1,2e9,0,0,1, "initial limit") \
 OPTION( forcephase,        0,  0,  1,0,0,1, "always use initial phase") \
 OPTION( frat,              0,  0,  2,0,0,1, "1=frat(lrat), 2=frat(drat)") \
 OPTION( globalalphaagreedy,1,  0,  1,0,0,1, "sorts alpha_a using a greedy approximate set-cover algorithm") \
-OPTION( globalalphaarandom,1,  0,  1,0,0,1, "sorts alpha_a randomly") \
+OPTION( globalalphaarandom,0,  0,  1,0,0,1, "sorts alpha_a randomly") \
 OPTION( globalalphaasort,  0,  0,  1,0,0,1, "sorts alpha_a respecting the partial order given by implication") \
 OPTION( globalbcp,         0,  0,  1,0,0,1, "will shrink GBCs based on binary clauses not propagation") \
 OPTION( globalbothpol,     1,  0,  1,0,0,1, "for j of the pairs of propagants, we consider it in poth polarities") \
+OPTION( globalchessheur,   0,  0,  1,0,0,1, "replaces global_preprocess with a function with heuristics for mutilated chessboard") \
 OPTION( globalfiltertriv,  1,  0,  1,0,0,1, "will filter out the trivial clauses") \
 OPTION( globalisort,       0,  0,  1,0,0,1, "will sort the first propagated literal in the globally blocked step") \
 OPTION( globallearn,       1,  0,  1,0,0,1, "learn clauses in the globally blocked step") \
 OPTION( globalmaxclause,   0, 0, 512,0,0,1, "maximum number of globally blocked clauses allowed at each level")\
 OPTION( globalmaxlen,      2, 0, 2e9,0,0,1, "maximum length of globally blocked clauses allowed")\
+OPTION( globalminlen,      0, 0, 2e9,0,0,1, "minimum length of globally blocked clauses allowed")\
 OPTION( globalnoshrink,    0,  0,  1,0,0,1, "will not shrink globally blocked clauses") \
 OPTION( globalorderi,      0,  0,  1,0,0,1, "will consider the first literal to be propagate i in increasing order") \
 OPTION( globalpreprocess,  0,  0,  1,0,0,1, "will learn gbc's in a preprocessing step") \

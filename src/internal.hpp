@@ -1265,6 +1265,7 @@ struct Internal {
 
   // amar
   Clause *new_learned_weak_irredundant_global_clause (int lit, vector<int> negated_conditional, vector<int> autarky_minus_lit, int glue);  // added by amar
+  int global_preprocess_chess ();
   int global_preprocess ();
   vector<int> get_touched_literals ();
   vector<int> get_sorted_literals ();

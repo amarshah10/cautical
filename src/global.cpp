@@ -135,11 +135,11 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> al
     vector<int> alpha_a_useful;
     vector<unordered_set<int>> alpha_a_propagated;
 
-    // printf("doing a greedy_sort_alpha_a with: \n");
-    // printf("alpha_a: ");
-    // print_vector(alpha_a);
-    // printf("neg_alpha_c");
-    // print_vector(neg_alpha_c);
+    printf("doing a greedy_sort_alpha_a with: \n");
+    printf("alpha_a: ");
+    print_vector(alpha_a);
+    printf("neg_alpha_c");
+    print_vector(neg_alpha_c);
 
     for (int i=0; i < alpha_a.size(); i++){
             Flags &f = flags (alpha_a[i]);
@@ -177,13 +177,13 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> al
 
     backtrack (0);
 
-    // printf("We are calling greedySsetCover!\n ");
-    // printf("Subsets:");
-    // printVectorOfSets(alpha_a_propagated);
-    // printf("alpha_a_useful: ");
-    // print_vector(alpha_a_useful);
-    // printf("neg_alpha_c:");
-    // print_vector (neg_alpha_c);
+    printf("We are calling greedySsetCover!\n ");
+    printf("Subsets:");
+    printVectorOfSets(alpha_a_propagated);
+    printf("alpha_a_useful: ");
+    print_vector(alpha_a_useful);
+    printf("neg_alpha_c:");
+    print_vector (neg_alpha_c);
 
     auto [chosen_indices, neg_alpha_c_without_c0] = greedySetCover(alpha_a_propagated, neg_alpha_c);
 
@@ -194,10 +194,10 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> al
         alpha_a_useful_final.push_back(alpha_a_useful[index]);
     }
 
-    // printf("alpha_a_useful_final: ");
-    // print_vector(alpha_a_useful_final);
-    // printf("neg_alpha_c_without_c0: ");
-    // print_vector(neg_alpha_c_without_c0);
+    printf("alpha_a_useful_final: ");
+    print_vector(alpha_a_useful_final);
+    printf("neg_alpha_c_without_c0: ");
+    print_vector(neg_alpha_c_without_c0);
 
     return std::make_pair(alpha_a_useful_final, neg_alpha_c_without_c0);
 }
@@ -318,8 +318,8 @@ void Internal::record_clause (int lit, vector<int> negated_conditional, vector<i
 
 void Internal::add_clause(vector<int> new_clause, int lit, vector<int> negated_conditional, vector<int> autarky, std::ofstream& outFile, std::ofstream& outFile_pr) {
 
-    // printf("We are adding the clause: ");
-    // print_vector(new_clause);
+    printf("We are adding the clause: ");
+    print_vector(new_clause);
     // removing the lit from autarky and negated conditional
     autarky.erase(std::remove(autarky.begin(), autarky.end(), lit), autarky.end());
     negated_conditional.erase(std::remove(negated_conditional.begin(), negated_conditional.end(), lit), negated_conditional.end());
@@ -533,6 +533,8 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
         new_clause.insert(new_clause.end(), alpha_a_useful.begin(), alpha_a_useful.end());
         if (!(opts.globalfiltertriv && check_if_clause_trivial (new_clause))) {
             add_clause (new_clause, alpha_a_useful.back(), new_clause, alpha_a, outFile, outFile_pr);
+        } else {
+            printf("skipping because of trivial clause\n");
         }
     }
 

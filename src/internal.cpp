@@ -774,6 +774,267 @@ vector<int> Internal::get_sorted_literals () {
   return sorted_literals;
 }
 
+// chessboard heuristics
+int Internal::global_preprocess_chess () {
+  START (global_preprocess);
+
+  globalmarks.resize (2 * max_var + 1);
+
+  for (int i = 0; i < globalmarks.size (); i++) {
+    globalmarks[i] = 0;
+  }
+
+  std::ofstream outFile;
+  char* filename = getenv("CADICAL_FILENAME");
+  outFile.open (filename);
+  if (!outFile) {
+      error ("Error: File could not be created.");
+  }
+  std::ofstream outFile_pr;
+  std::string filename_pr = filename;  // Implicit conversion
+  filename_pr += "_pr";
+
+  outFile_pr.open (filename_pr);
+  if (!outFile_pr) {
+      error ("Error: File could not be created.");
+  }
+  double original_time = time ();
+
+  vector<vector<int>> asses = {
+    // {1, 10},
+    // {2, 11},
+    // {3, 12},
+    // {4, 13},
+    // {5, 14},
+    // {6, 15},
+    // {7, 16},
+    // {8, 17},
+    // {9, 18},
+    // {10, 19},
+    // {11, 20},
+    // {12, 21},
+    // {13, 22},
+    // {14, 23},
+    // {15, 24},
+    // {16, 25},
+    // {17, 26},
+    // {18, 27},
+    // {19, 28},
+    // {20, 29},
+    // {21, 30},
+    // {22, 31},
+    // {23, 32},
+    // {24, 33},
+    // {25, 34},
+    // {26, 35},
+    // {27, 36},
+    // {28, 37},
+    // {29, 38},
+    // {30, 39},
+    // {31, 40},
+    // {32, 41},
+    // {33, 42},
+    // {34, 43},
+    // {35, 44},
+    // {36, 45},
+    // {37, 46},
+    // {38, 47},
+    // {39, 48},
+    // {40, 49},
+    // {41, 50},
+    // {42, 51},
+    // {43, 52},
+    // {44, 53},
+    // {45, 54},
+    // {46, 55},
+    // {47, 56},
+    // {48, 57},
+    // {49, 58},
+    // {50, 59},
+    // {51, 60},
+    // {52, 61},
+    // {53, 62},
+    // {54, 63},
+    // {55, 64},
+    // {56, 65},
+    // {57, 66},
+    // {58, 67},
+    // {59, 68},
+    // {60, 69},
+    // {61, 70},
+    // {62, 71},
+    // {63, 72},
+    // {64, 73},
+    // {65, 74},
+    // {66, 75},
+    // {67, 76},
+    // {68, 77},
+    // {69, 78},
+    // {70, 79},
+    // {71, 80},
+    // {72, 81},
+    // {73, 82},
+    // {74, 83},
+    // {75, 84},
+    // {76, 85},
+    // {77, 86},
+    // {78, 87},
+    // {79, 88},
+    // {80, 89},
+    // {81, 90},
+
+    // {1, 10},
+    // {10, 19},
+    // {19, 28},
+    // {28, 37},
+    // {37, 46},
+    // {46, 55},
+    // {55, 64},
+    // {64, 73},
+    // {73, 82},
+
+    // {8, 17, 100},
+    // {17, 26, 110},
+    // {26, 35, 120},
+    // {35, 44, 130},
+    // {44, 53, 140},
+    // {53, 62, 150},
+    // {62, 71, 160},
+    // {71, 80, 170},
+    // {80, 89, 180},
+
+    // idea : do a round of triples, then a round of doubles
+    {9, 18},
+    {18, 27},
+    {27, 36},
+    {36, 45},
+    {45, 54},
+    {54, 63},
+    {63, 72},
+    {72, 81},
+
+    {7, 16, 99},
+    // {16, 18, 25, 27},
+    {16, 25, 109},
+    // {25, 27, 34, 36},
+    {25, 34, 119},
+    {34, 43, 129},
+    {43, 52, 139},
+    {52, 61, 149},
+    {61, 70, 159},
+    {70, 79, 169},
+    {79, 88, 179},
+
+
+    {8, 17},
+    {17, 26},
+    {26, 35},
+    {35, 44},
+    {44, 53},
+    {53, 62},
+    {62, 71},
+    {71, 80},
+
+    {6, 15, 98}, // trivial clause
+    {15, 24, 108},
+    {24, 33, 118},
+    {33, 42, 128},
+    {42, 51, 138},
+    {51, 60, 148},
+    {60, 69, 158},
+    {69, 78, 168},
+    {78, 87, 178},
+
+
+
+    {5, 14, 97},
+    {14, 23, 107},
+    {23, 32, 117},
+    {32, 41, 127},
+    {41, 50, 137},
+    {50, 59, 147},
+    {59, 68, 157},
+    {68, 77, 167},
+    {77, 86, 177},
+   
+  };
+
+  // vector<Flags> ass_flags;
+  for (auto ass_round : asses) {
+    bool try_learn = true;
+    printf("we are backtracking\n");
+    backtrack ();
+    for (auto ass : ass_round) {
+      // restart
+
+      // make sure not trying to search_assume on fixed literal
+      bool flag_fixed = false;
+      Flags f = Internal::flags (ass);
+      if (f.status == Flags::FIXED) {
+        flag_fixed = true;
+      }
+      if (flag_fixed) {
+        printf("skipping because of fixed literal %d\n", ass);
+        // try_learn = false;
+        continue;
+      }
+      if (val (ass) != 0) {
+        printf("skipping because of assigned literal %d with value %d\n", ass, val (ass));
+        // try_learn = false;
+        continue;
+      }
+
+      // assume
+      printf("propagating on %d with val %d\n", ass, val (ass));
+      search_assume_decision (ass);
+      if (!propagate ()) {
+        printf("we are in first propagate with %d\n", ass);
+        analyze ();
+        while (!unsat && !propagate ()) {
+          analyze ();
+          printf("double propagate on %d\n", ass);
+        }
+        try_learn = false;
+        break;
+      }
+    }
+    // printf("We have the assignment for variables");
+    // for (int i = 1; i <= max_var; i++) {
+    //   printf("%d->%d; ", i, val(i));
+    // }
+    printf("\n");
+    // learn
+    // printf("finished asses\n");
+    if (try_learn) {
+      printf("trying to learn\n");
+      bool added_a_clause = least_conditional_part(outFile, outFile_pr, original_time);
+      // printf("did added a clause\n");
+    } else {
+      printf("did not try to learn\n");
+    }
+    
+    // printf("we are backtracking!\n");
+    // printf("We have propagated: %d and trail.size %d\n", propagated, trail.size());
+    backtrack ();
+    if (!propagate ()) {
+      printf("Inside final propagate\n");
+      analyze();
+      while (!unsat && !propagate ()) {
+        printf("Inside final propagate loop\n");
+        analyze();
+      }
+    }
+       // printf("After backtrack: We have propagated: %d and trail.size %d\n", propagated, trail.size());
+    if (unsat) {
+      STOP (global_preprocess);
+      return 20;
+    }
+  }
+  printf("finished global preprocess\n");
+  STOP (global_preprocess);
+  return 0;
+}
+
 
 // amar : created an option to learn globally blocked clauses in a preprocessing step
 int Internal::global_preprocess () {
@@ -1158,11 +1419,13 @@ int Internal::solve (bool preprocess_only) {
   }
   if (!res && !level)
     res = preprocess ();
-  if (!res && opts.globalpreprocess)
-    res = global_preprocess ();
-    // printf("The res is %d\n", res);
+  if (!res && opts.globalpreprocess) {
+    if (opts.globalchessheur)
+      res = global_preprocess_chess ();
+    else
+      res = global_preprocess ();
     backtrack ();
-  if (!preprocess_only) {
+  } if (!preprocess_only) {
     if (!res && !level)
       res = local_search ();
     if (!res && !level)
