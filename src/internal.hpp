@@ -1268,6 +1268,7 @@ struct Internal {
   // amar
   Clause *new_learned_weak_irredundant_global_clause (int lit, vector<int> negated_conditional, vector<int> autarky_minus_lit, int glue);  // added by amar
   int global_preprocess_chess ();
+  void delete_clause_vector(vector<int> literals);
   int global_preprocess ();
   vector<int> get_touched_literals ();
   vector<int> get_sorted_literals ();
@@ -1277,6 +1278,7 @@ struct Internal {
   void imp_sort_alpha_a (std::vector<int>& alpha_a);
   void random_sort_alpha_a (std::vector<int>& alpha_a);
   pair<vector<int>, vector<int>> greedy_sort_alpha_a (std::vector<int> alpha_a, std::vector<int> neg_alpha_c);
+  pair<vector<int>, vector<int>> greedy_sort_alpha_a_special (std::vector<int> alpha_a, std::vector<int> neg_alpha_c);
   void bcp_shrink (vector<int> alpha_a, vector<int> alpha_a_useful, vector<int> neg_alpha_c_minus_c0);
   bool propagate_shrink (vector<int> alpha_a, vector<int> alpha_a_useful, vector<int> neg_alpha_c_minus_c0);
   void add_clause(vector<int> new_clause, int lit, vector<int> negated_conditional, vector<int> autarky, std::ofstream& outFile, std::ofstream& outFile_pr);

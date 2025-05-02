@@ -92,7 +92,16 @@ pair<vector<int>, vector<int>> greedySetCoverSpecial(vector<int> curr_global_try
         // see if we can learn
         for (auto learn : curr_global_try) {
             // add idx of learn to chosen
+            printf("trying ot learning %d\n", learn);
+            printf("We have alpha_a: ");
+            print_vector(alpha_a);
             int learn_idx = distance(alpha_a.begin(), find(alpha_a.begin(), alpha_a.end(), learn));
+            printf("learn_idx: %d\n", learn_idx);
+            printf("alpha_a.size(): %d\n", alpha_a.size());
+            printf("subsets.size(): %d\n", subsets.size());
+            assert(0<= learn_idx && learn_idx    < subsets.size());
+            assert (alpha_a.size () == subsets.size ());
+            // assert(0 <= learn_idx < alpha_a.size());
             chosen_subsets.push_back(learn_idx);
             covered.insert(subsets[learn_idx].begin(), subsets[learn_idx].end());
             for (const auto& elem : subsets[learn_idx]) {
@@ -101,6 +110,10 @@ pair<vector<int>, vector<int>> greedySetCoverSpecial(vector<int> curr_global_try
         }
     
         vector<int> uncovered_vector(uncovered.begin (), uncovered.end ());
+        printf("chosen_subsets: ");
+        print_vector(chosen_subsets);
+        printf("uncovered_vector: ");
+        print_vector(uncovered_vector);
         return std::make_pair(chosen_subsets, uncovered_vector);
     }
     
@@ -149,7 +162,63 @@ pair<vector<int>, vector<int>> greedySetCover(vector<unordered_set<int>>& subset
 // picking alpha_a_useful based on greedy set cover
 
 
+pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a_special(std::vector<int> alpha_a, std::vector<int> neg_alpha_c) {
+    vector<int> empty;
+    vector<int> global_try_final;
 
+    printf("doing a greedy_sort_alpha_a with: \n");
+    printf("alpha_a: ");
+    print_vector(alpha_a);
+    printf("neg_alpha_c");
+    print_vector(neg_alpha_c);
+
+    unordered_set<int> propagated;
+    backtrack ();
+    for (auto learn : global_try){
+        if (find (alpha_a.begin(), alpha_a.end(), learn) != alpha_a.end()) {
+            global_try_final.push_back(learn);
+        }
+        Flags &f = flags (learn);
+        if (f.status == Flags::FIXED) {
+            continue;
+        }   
+        // backtrack ();
+        assert (val(-learn) >= 0);
+        if (val(-learn) > 0) {
+            printf("We have already learnt%d\n", -learn);
+            continue;
+        }
+        printf("We are propagating %d\n", learn);
+        search_assume_decision(-learn);
+        if (!propagate ()) {
+            printf("10. We are in propagate with %d!\n", -learn);
+            analyze ();
+            if (unsat) {
+                printf("We have a conflict on %d!\n", learn);
+                // break;
+            }
+            if (!propagate ()) {
+                printf("11. We are in propagate with %d!\n", -learn);
+                analyze ();
+                // break;
+            }
+            return std::make_pair(empty, empty);
+        }
+        for (int j=0; j < neg_alpha_c.size(); j ++) {
+            int v = val (neg_alpha_c[j]);
+            if (v < 0) {
+                assert (j < neg_alpha_c.size());
+                propagated.insert(neg_alpha_c[j]);
+            }
+        }
+        printSet(propagated);
+    }
+
+    backtrack (0);
+
+    assert (propagated.size() == neg_alpha_c.size());
+    return std::make_pair(global_try_final, empty);
+}
     
 pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> alpha_a, std::vector<int> neg_alpha_c) {
     vector<int> alpha_a_useful;
@@ -517,8 +586,10 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
     // sorting alpha_a by implication, randomly or not at all depending on flags
     custom_sort_alpha_a(alpha_a);
 
-    if (opts.globalalphaagreedy) {
+    if (opts.globalalphaagreedy && !opts.globalchessheur) {
         std::tie(alpha_a_useful, neg_alpha_c_minus_c0) = greedy_sort_alpha_a(alpha_a, neg_alpha_c); // issue with variable shadowing
+    } else if (opts.globalalphaagreedy) {
+        std::tie(alpha_a_useful, neg_alpha_c_minus_c0) = greedy_sort_alpha_a_special(alpha_a, neg_alpha_c);
     } else {
     
         // try to shrink clauses using binary clause propagation, instead of a more general propagation
