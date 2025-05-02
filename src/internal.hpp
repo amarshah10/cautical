@@ -251,6 +251,8 @@ struct Internal {
   vector<int> shrinkable;    // removable or poison in 'shrink'
   Reap reap;                 // radix heap for shrink
 
+  vector<int> global_try;    // twain: attempt to learn this clause for special
+
   size_t num_assigned; // check for satisfied
 
   vector<int> probes;       // remaining scheduled probes

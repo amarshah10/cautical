@@ -83,7 +83,27 @@ void Internal::custom_sort_alpha_a(std::vector<int>& alpha_a) {
         random_sort_alpha_a(alpha_a);
     }
 }
-
+pair<vector<int>, vector<int>> greedySetCoverSpecial(vector<int> curr_global_try, vector<int> alpha_a, vector<unordered_set<int>>& subsets, vector<int> total_elements) {
+        unordered_set<int> covered;
+        unordered_set<int> uncovered(total_elements.begin(), total_elements.end());;
+        int num_elements = 0;
+        vector<int> chosen_subsets;
+    
+        // see if we can learn
+        for (auto learn : curr_global_try) {
+            // add idx of learn to chosen
+            int learn_idx = distance(alpha_a.begin(), find(alpha_a.begin(), alpha_a.end(), learn));
+            chosen_subsets.push_back(learn_idx);
+            covered.insert(subsets[learn_idx].begin(), subsets[learn_idx].end());
+            for (const auto& elem : subsets[learn_idx]) {
+                uncovered.erase(elem);
+            }
+        }
+    
+        vector<int> uncovered_vector(uncovered.begin (), uncovered.end ());
+        return std::make_pair(chosen_subsets, uncovered_vector);
+    }
+    
 // Function to find the smallest number of subsets that maximize union
 pair<vector<int>, vector<int>> greedySetCover(vector<unordered_set<int>>& subsets, vector<int> total_elements) {
 
@@ -185,7 +205,8 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> al
     printf("neg_alpha_c:");
     print_vector (neg_alpha_c);
 
-    auto [chosen_indices, neg_alpha_c_without_c0] = greedySetCover(alpha_a_propagated, neg_alpha_c);
+    auto [chosen_indices, neg_alpha_c_without_c0] = greedySetCoverSpecial(global_try, alpha_a, alpha_a_propagated, neg_alpha_c);
+    // auto [chosen_indices, neg_alpha_c_without_c0] = greedySetCover(alpha_a_propagated, neg_alpha_c);
 
     vector<int> alpha_a_useful_final;
 
