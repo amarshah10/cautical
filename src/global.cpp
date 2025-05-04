@@ -21,6 +21,11 @@ void print_vector (vector<int> c) {
     printf("\n");
 }
 
+void print_clause (Clause *c) {
+    for (auto lit : *c) printf("%d ", lit);
+    printf("\n");
+}
+
 void printSet(const unordered_set<int> uset) {
     printf("  { ");
         for (const auto& elem : uset) {
@@ -164,7 +169,7 @@ pair<vector<int>, vector<int>> greedySetCover(vector<unordered_set<int>>& subset
 
 pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a_special(std::vector<int> alpha_a, std::vector<int> neg_alpha_c) {
     vector<int> empty;
-    vector<int> global_try_final;
+    // vector<int> global_try_final;
 
     printf("doing a greedy_sort_alpha_a with: \n");
     printf("alpha_a: ");
@@ -175,9 +180,10 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a_special(std::vector
     unordered_set<int> propagated;
     backtrack ();
     for (auto learn : global_try){
-        if (find (alpha_a.begin(), alpha_a.end(), learn) != alpha_a.end()) {
+        if (find (alpha_a.begin(), alpha_a.end(), learn) == alpha_a.end()) {
             printf("not in alpha_a: %d", learn);
-            global_try_final.push_back(learn);
+            // global_try_final.push_back(learn);
+            continue;
         }
         Flags &f = flags (learn);
         if (f.status == Flags::FIXED) {
@@ -204,6 +210,7 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a_special(std::vector
                 analyze ();
                 // break;
             }
+            // break;
             return std::make_pair(empty, empty);
         }
         for (int j=0; j < neg_alpha_c.size(); j ++) {
@@ -219,7 +226,9 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a_special(std::vector
     backtrack (0);
 
     assert (propagated.size() == neg_alpha_c.size());
-    return std::make_pair(global_try_final, empty);
+    return std::make_pair(global_try, empty);
+    // print_vector(global_try_final);
+    // return std::make_pair(global_try_final, empty);
 }
     
 pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a(std::vector<int> alpha_a, std::vector<int> neg_alpha_c) {
@@ -528,9 +537,12 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
                 if (f.status == Flags::FIXED) {
                     continue;
                 }
-                // printf("1. We get here for lit %d", lit);
-                if (!global_getbit(lit) && !is_decision(-lit) && !is_decision(lit)) {
-                    // printf("2. We get here for lit %d", lit);
+                // printf("1. We get here for lit %d\n", lit);
+                if (!global_getbit(lit)) {
+                    if (lit == 128 || lit == -128)  {
+                        printf("2. We get here for lit %d and clause ", lit);
+                        print_clause(c);
+                    }
                     alpha_touches.push_back(lit);
                 }
             }
