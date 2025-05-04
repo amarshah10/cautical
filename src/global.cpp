@@ -176,6 +176,7 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a_special(std::vector
     backtrack ();
     for (auto learn : global_try){
         if (find (alpha_a.begin(), alpha_a.end(), learn) != alpha_a.end()) {
+            printf("not in alpha_a: %d", learn);
             global_try_final.push_back(learn);
         }
         Flags &f = flags (learn);
@@ -183,9 +184,10 @@ pair<vector<int>, vector<int>> Internal::greedy_sort_alpha_a_special(std::vector
             continue;
         }   
         // backtrack ();
-        assert (val(-learn) >= 0);
-        if (val(-learn) > 0) {
-            printf("We have already learnt%d\n", -learn);
+        printf("trying to learn %d\n", learn);
+        // assert (val(learn) >= 0);
+        if (val(learn) != 0) {
+            printf("We have already learnt%d\n", learn);
             continue;
         }
         printf("We are propagating %d\n", learn);
@@ -527,7 +529,7 @@ bool Internal::least_conditional_part(std::ofstream& outFile, std::ofstream& out
                     continue;
                 }
                 // printf("1. We get here for lit %d", lit);
-                if (!global_getbit(lit)) {
+                if (!global_getbit(lit) && !is_decision(-lit) && !is_decision(lit)) {
                     // printf("2. We get here for lit %d", lit);
                     alpha_touches.push_back(lit);
                 }
